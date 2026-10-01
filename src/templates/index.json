@@ -1,0 +1,22 @@
+[
+ {
+  "file": "01-network-overview.netdraw",
+  "name": "Network overview"
+ },
+ {
+  "file": "02-flow-comparison.netdraw",
+  "name": "Flow comparison (two sites)"
+ },
+ {
+  "file": "03-zero-trust-access.netdraw",
+  "name": "Zero Trust access"
+ },
+ {
+  "file": "04-hub-and-spoke-wan.netdraw",
+  "name": "Hub and spoke WAN"
+ },
+ {
+  "file": "05-meeting-whiteboard.netdraw",
+  "name": "Meeting whiteboard"
+ }
+]

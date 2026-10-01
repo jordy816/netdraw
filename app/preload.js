@@ -1,0 +1,31 @@
+// Narrow bridge between the editor page and the main process.
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
+
+contextBridge.exposeInMainWorld('netdrawHost', {
+  startupFile: () => ipcRenderer.invoke('startupFile'),
+  onCommand: (cb) => ipcRenderer.on('cmd', (_e, cmd, arg) => cb(cmd, arg)),
+  onOpenFile: (cb) => ipcRenderer.on('openFile', (_e, p) => cb(p)),
+  setTitle: (t) => ipcRenderer.send('setTitle', t),
+  setDirty: (d) => ipcRenderer.send('setDirty', d),
+  closeNow: () => ipcRenderer.send('closeNow'),
+  openDialog: () => ipcRenderer.invoke('openDialog'),
+  readFile: (p) => ipcRenderer.invoke('readFile', p),
+  saveFile: (o) => ipcRenderer.invoke('saveFile', o),
+  exportSvg: (o) => ipcRenderer.invoke('exportSvg', o),
+  exportPng: (o) => ipcRenderer.invoke('exportPng', o),
+  copyPng: (o) => ipcRenderer.invoke('copyPng', o),
+  pickImage: () => ipcRenderer.invoke('pickImage'),
+  readClipboard: () => ipcRenderer.invoke('readClipboard'),
+  writeClipboardText: (t) => ipcRenderer.send('writeClipboardText', t),
+  confirmDiscard: (name) => ipcRenderer.invoke('confirmDiscard', name),
+  fontBase64: (n) => ipcRenderer.invoke('fontBase64', n),
+  pathForFile: (f) => { try { return webUtils.getPathForFile(f) || null; } catch { return null; } },
+  version: ipcRenderer.sendSync('version'),
+  setTheme: (t) => ipcRenderer.send('setTheme', t),
+  setUiZoom: (f) => ipcRenderer.send('setUiZoom', f),
+  autosave: (d) => ipcRenderer.send('autosave', d),
+  clearAutosave: () => ipcRenderer.send('clearAutosave'),
+  recoverInfo: () => ipcRenderer.invoke('recoverInfo'),
+  listTemplates: () => ipcRenderer.invoke('listTemplates'),
+  exportPdf: (o) => ipcRenderer.invoke('exportPdf', o),
+});

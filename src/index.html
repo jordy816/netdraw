@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src 'self' data:">
+<title>NetDraw</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header id="toolbar">
+  <div class="brand"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="6" cy="17" r="4" fill="#2563EB"/><circle cx="18" cy="7" r="4" fill="#D97706"/><path d="M9.5 15.5C13 14 12 9 14.5 8.3" fill="none" stroke="#0F766E" stroke-width="2.2" stroke-linecap="round"/></svg><span>NetDraw</span></div>
+  <span id="docname" class="docname">Untitled</span>
+  <div class="sep"></div>
+  <button class="tb" data-cmd="new" title="New (Ctrl+N)"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z M14 3v4h4 M12 11v6 M9 14h6"/></svg></button>
+  <button class="tb" data-cmd="open" title="Open (Ctrl+O)"><svg viewBox="0 0 24 24"><path d="M3 6h6l2 2h10v11H3z"/></svg></button>
+  <button class="tb" data-cmd="save" title="Save (Ctrl+S)"><svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z M8 3v5h8V3 M8 21v-7h8v7"/></svg></button>
+  <div class="sep"></div>
+  <button class="tb" data-cmd="undo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5 M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+  <button class="tb" data-cmd="redo" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5 M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+  <div class="sep"></div>
+  <button class="tb" data-cmd="mode:select" title="Select (V)"><svg viewBox="0 0 24 24"><path d="M6 3l12 8-5.5 1.5L10 18z"/></svg></button>
+  <button class="tb" data-cmd="mode:connect" title="Connect (C)"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="6.5" r="2.5"/><path d="M8 17c6 0 5-10 8-10.5"/></svg></button>
+  <button class="tb" data-cmd="mode:pan" title="Pan (H, or hold Space)"><svg viewBox="0 0 24 24"><path d="M8 12V6.5a1.5 1.5 0 0 1 3 0V11 M11 10.5V5a1.5 1.5 0 0 1 3 0v5.5 M14 10.5V6.5a1.5 1.5 0 0 1 3 0V12 M17 10a1.5 1.5 0 0 1 3 0v4.5a6.5 6.5 0 0 1-6.5 6.5h-1a6 6 0 0 1-4.8-2.4L4.6 15a1.5 1.5 0 0 1 2.3-1.9L8 14.5"/></svg></button>
+  <div class="sep"></div>
+  <span class="tblabel">Route</span>
+  <button class="tb" data-cmd="routeStyle:curve" title="New connectors: curved"><svg viewBox="0 0 24 24"><path d="M4 18C12 18 12 6 20 6"/></svg></button>
+  <button class="tb" data-cmd="routeStyle:orthogonal" title="New connectors: orthogonal"><svg viewBox="0 0 24 24"><path d="M4 18h6a2 2 0 0 0 2-2V8a2 2 0 0 1 2-2h6"/></svg></button>
+  <button class="tb" data-cmd="routeStyle:straight" title="New connectors: straight"><svg viewBox="0 0 24 24"><path d="M4 18L20 6"/></svg></button>
+  <div class="sep"></div>
+  <button class="tb" data-cmd="front" title="Bring to front (Ctrl+Shift+])"><svg viewBox="0 0 24 24"><path d="M4 14V4h10" stroke-dasharray="2 2.5"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="currentColor" fill-opacity=".18"/></svg></button>
+  <button class="tb" data-cmd="back" title="Send to back (Ctrl+Shift+[)"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="11" height="11" rx="1.5" fill="currentColor" fill-opacity=".18"/><path d="M20 10v10H10" stroke-dasharray="2 2.5"/></svg></button>
+  <button class="tb" data-cmd="group" title="Group (Ctrl+G)"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="2.5 2.5"/><rect x="6.5" y="6.5" width="5" height="5" rx="1"/><rect x="12.5" y="12.5" width="5" height="5" rx="1"/></svg></button>
+  <div class="sep"></div>
+  <button class="tb" data-cmd="grid" title="Show grid (G)"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z M4 9.3h16 M4 14.6h16 M9.3 4v16 M14.6 4v16" stroke-width="1.3"/></svg></button>
+  <button class="tb" data-cmd="snap" title="Snap to grid and guides"><svg viewBox="0 0 24 24"><path d="M6 4v8a6 6 0 0 0 12 0V4h-4v8a2 2 0 0 1-4 0V4z M6 8h4 M14 8h4"/></svg></button>
+  <div class="spacer"></div>
+  <button class="tb" data-cmd="zoomOut" title="Zoom out (Ctrl+-)"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
+  <button id="zoomlabel" class="zoomlabel" title="Click for 100% (Ctrl+1)">100%</button>
+  <button class="tb" data-cmd="zoomIn" title="Zoom in (Ctrl+=)"><svg viewBox="0 0 24 24"><path d="M6 12h12 M12 6v12"/></svg></button>
+  <button class="tb" data-cmd="zoomFit" title="Fit (Ctrl+0)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5"/></svg></button>
+  <div class="sep"></div>
+  <button class="tb" data-cmd="theme" title="Dark mode (exports stay white)"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
+  <div class="sep"></div>
+  <button class="tb wide" data-cmd="export" data-menu="m-export" title="Export"><svg viewBox="0 0 24 24"><path d="M12 3v12 M7 10l5 5 5-5 M5 21h14"/></svg><span>Export</span></button>
+  <button class="tb" data-cmd="shortcuts" title="Keyboard and mouse"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6 M12 17.2v.1"/></svg></button>
+</header>
+<div id="m-export" class="menu" hidden>
+  <button data-cmd="exportPng:2"><span>PNG for screen / Word (2×) <small data-dim="2"></small></span><kbd>Ctrl+E</kbd></button>
+  <button data-cmd="exportPng:print"><span>PNG for print (300 dpi) <small data-dim="print"></small></span><kbd>Ctrl+P</kbd></button>
+  <button data-cmd="exportPng:1"><span>PNG, 1× <small data-dim="1"></small></span></button>
+  <button data-cmd="exportPdf"><span>PDF, vector <small data-dim="pdf"></small></span><kbd>Ctrl+Shift+P</kbd></button>
+  <button data-cmd="exportSvg">SVG (fonts embedded)<kbd>Ctrl+Shift+E</kbd></button>
+  <hr>
+  <button data-cmd="exportPngSel:2">Selection as PNG, 2×</button>
+  <button data-cmd="exportSvg:sel">Selection as SVG</button>
+  <hr>
+  <button data-cmd="copyPng">Copy as image (paste into Word)<kbd>Ctrl+Shift+C</kbd></button>
+</div>
+<main>
+  <aside id="palette"></aside>
+  <section id="viewport">
+    <div id="stage"><div id="page"></div><svg id="overlay" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <canvas id="ruler-x" class="ruler"></canvas><canvas id="ruler-y" class="ruler"></canvas><div id="ruler-corner" title="Rulers in millimetres at the print scale (R to hide)">mm</div>
+  </section>
+  <aside id="props"></aside>
+</main>
+<footer id="status"><span id="hint"></span><span class="spacer"></span><span id="coords"></span></footer>
+<div id="ctxmenu" class="menu" hidden></div>
+<textarea id="inline-edit" hidden spellcheck="false"></textarea>
+<div id="toast"></div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

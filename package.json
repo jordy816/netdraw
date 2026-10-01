@@ -1,0 +1,75 @@
+{
+  "name": "netdraw",
+  "productName": "NetDraw",
+  "version": "1.1.0",
+  "description": "Drag-and-drop network and architecture diagram editor",
+  "main": "app/main.js",
+  "author": "Jordy Thomassen",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "verify": "node tools/verify.mjs",
+    "test": "node tools/test-model.mjs",
+    "dist:win": "electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3",
+    "pixelmatch": "^7.1.0",
+    "playwright-core": "1.63.0",
+    "pngjs": "^7.0.0"
+  },
+  "build": {
+    "appId": "nl.jordythomassen.netdraw",
+    "productName": "NetDraw",
+    "copyright": "Jordy Thomassen",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "app/**",
+      "src/**",
+      "package.json"
+    ],
+    "fileAssociations": [
+      {
+        "ext": "netdraw",
+        "name": "NetDraw project",
+        "description": "NetDraw diagram",
+        "role": "Editor",
+        "icon": "build/file.ico"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": true,
+      "artifactName": "NetDraw-${version}-win-x64.${ext}"
+    },
+    "portable": {
+      "artifactName": "NetDraw-${version}-portable.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "NetDraw-Setup-${version}.${ext}"
+    }
+  }
+}
