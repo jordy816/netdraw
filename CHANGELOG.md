@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0 — 2026-10-01
+
+- Built-in MCP server (`NetDraw.exe --mcp`): AI assistants such as Claude Desktop and Claude Code can build and change
+  drawings: live in the open window (every change is an undo step) or directly in .netdraw files. Tools: style guide,
+  read drawing, new drawing, add items, connect, update, delete, legend, preview image, export, save, open.
+- Help → Connect an AI assistant: one click adds NetDraw to Claude Desktop; copyable setup for Claude Code and other clients.
+- Resize handles: corners scale icons (lines stay attached to the disc edge; Shift also scales the label), text and
+  markers; side handles set the wrap width of a text.
+- Fixed: drawings started from a template lost the binding between lines and icons.
+
 ## 1.1.0 — 2026-10-01
 
 - Dark mode (light / dark / follow Windows). The drawing is previewed dark, exports stay white.

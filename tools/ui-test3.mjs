@@ -96,6 +96,47 @@ await win.waitForTimeout(200);
 const found = await win.evaluate(() => window.app.editor.selectedItems().map((i) => i.name || i.text));
 check('find selects matching items', found.some((t) => /Policy/.test(t)), found.join(','));
 
+// 8b. resize an icon from a corner handle: disc grows, attached lines follow the edge
+await win.evaluate(() => window.app.editor.fit());
+const nodeR = await win.evaluate(() => {
+  const n = window.app.doc.items.find((i) => i.type === 'node' && window.app.doc.items.some((c) => c.type === 'connector' && c.from?.id === i.id));
+  window.app.editor.setSelection([n.id]);
+  const c = window.app.doc.items.find((x) => x.type === 'connector' && x.from?.id === n.id);
+  return { id: n.id, r: n.r, cid: c.id, d: c.d };
+});
+await win.waitForTimeout(100);
+const se = await win.locator('#overlay .h-se').boundingBox();
+await win.mouse.move(se.x + se.width / 2, se.y + se.height / 2); await win.mouse.down();
+await win.mouse.move(se.x + 25, se.y + 25, { steps: 5 }); await win.mouse.up();
+const grown = await win.evaluate(({ id, cid }) => ({ n: window.app.doc.items.find((i) => i.id === id), d: window.app.doc.items.find((i) => i.id === cid).d }), nodeR);
+check('corner handle enlarges an icon', grown.n.r > nodeR.r && grown.n.glyphScale > 1, `r ${nodeR.r} -> ${grown.n.r}, glyph ×${grown.n.glyphScale}`);
+check('attached line follows the bigger disc', grown.d !== nodeR.d);
+await win.keyboard.press('Control+z');
+const back = await win.evaluate((id) => window.app.doc.items.find((i) => i.id === id).r, nodeR.id);
+check('undo restores the size', back === nodeR.r);
+
+// 8c. text: corner scales the font, side handle sets the wrap width
+const tid = await win.evaluate(() => { const t = window.app.doc.items.find((i) => i.type === 'text' && i.size >= 20); window.app.editor.setSelection([t.id]); return { id: t.id, size: t.size }; });
+await win.waitForTimeout(100);
+const tse = await win.locator('#overlay .h-se').boundingBox();
+await win.mouse.move(tse.x + 4, tse.y + 4); await win.mouse.down();
+await win.mouse.move(tse.x + 60, tse.y + 30, { steps: 5 }); await win.mouse.up();
+const ts = await win.evaluate((id) => window.app.doc.items.find((i) => i.id === id).size, tid.id);
+check('corner handle scales text', ts > tid.size, `${tid.size} -> ${ts}`);
+const te = await win.locator('#overlay .h-e').boundingBox();
+await win.mouse.move(te.x + 4, te.y + 4); await win.mouse.down();
+await win.mouse.move(te.x - 120, te.y + 4, { steps: 5 }); await win.mouse.up();
+const tw = await win.evaluate((id) => window.app.doc.items.find((i) => i.id === id).wrap, tid.id);
+check('side handle sets a wrap width', tw > 0, `wrap ${tw}`);
+
+// 8d. connect-an-assistant dialog
+await win.evaluate(() => { window.app.command('mcp'); });
+await win.waitForSelector('.modal pre.code');
+const mcpText = await win.locator('.modal pre.code').first().textContent();
+check('MCP dialog shows the Claude Code command', /claude mcp add .*netdraw.*--mcp/.test(mcpText), mcpText);
+await win.screenshot({ path: path.join(outDir, 'ui3-mcp.png') });
+await win.locator('.modal .btn.primary').last().click();
+
 // 9. autosave + recovery after a crash-like exit
 await win.evaluate(() => { window.app.markDirty(); window.app.autosave(); });
 await win.waitForTimeout(300);

@@ -157,6 +157,9 @@ details[open] > summary::before { transform: translateX(2px) rotate(90deg) trans
 .modal-wrap { position: fixed; inset: 0; z-index: 60; background: rgba(2, 6, 23, .45); display: flex; align-items: center; justify-content: center; }
 .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; min-width: 380px; max-width: min(900px, 92vw); max-height: 86vh; overflow: auto; box-shadow: 0 20px 60px var(--shadow); }
 .modal h3 { margin: 0 0 12px; font-size: 15px; }
+.modal h4 { margin: 16px 0 6px; font-size: 13px; }
+.modal p { margin: 0 0 8px; line-height: 1.5; max-width: 600px; }
+pre.code { margin: 0 0 8px; padding: 8px 10px; background: var(--hover); border: 1px solid var(--line); border-radius: 6px; font: 12px/1.45 Consolas, 'DejaVu Sans Mono', monospace; white-space: pre-wrap; word-break: break-all; user-select: text; max-width: 640px; }
 .modal .body { margin-bottom: 14px; }
 .modal .row { grid-template-columns: 70px 260px; }
 .tpls { display: grid; grid-template-columns: repeat(3, 240px); gap: 12px; }

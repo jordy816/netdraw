@@ -6,6 +6,10 @@ const { ClipboardItem } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
+const net = require('net');
+const os = require('os');
+const { spawn } = require('child_process');
+const { pipePath, onLines } = require('./pipe');
 
 const SRC = path.join(__dirname, '..', 'src');
 const RECENT = () => path.join(app.getPath('userData'), 'recent.json');
@@ -25,6 +29,9 @@ function fileArg(argv) {
 }
 
 const cliExport = argValue(process.argv, '--export');
+const mcpMode = process.argv.includes('--mcp');
+// headless runs keep their own profile, so they never clash with an open NetDraw window
+if (cliExport || mcpMode) app.setPath('userData', path.join(os.tmpdir(), 'netdraw-cli'));
 const smokeOut = argValue(process.argv, '--smoke');   // test hook: open the editor, screenshot it, exit
 
 // ------------------------------------------------------------------------------------------------ rendering
@@ -124,6 +131,104 @@ function registerFileType() {
   return `Done. .netdraw files now open with NetDraw${okLink ? ', and NetDraw is in the Start menu' : ''}.\n\n${exe}`;
 }
 
+// ------------------------------------------------------------------------------------------------ automation
+const exePath = () => process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
+
+// The open window answers MCP requests on a private local pipe.
+function startAutomationServer() {
+  const where = pipePath();
+  if (process.platform !== 'win32') { try { fs.unlinkSync(where); } catch { /* none */ } }
+  const server = net.createServer((sock) => {
+    onLines(sock, async (line) => {
+      let msg;
+      try { msg = JSON.parse(line); } catch { return; }
+      let reply;
+      try { reply = { id: msg.id, ...(await handleAutomation(msg.method, msg.params || {})) }; } catch (e) { reply = { id: msg.id, error: String(e.message || e) }; }
+      sock.write(`${JSON.stringify(reply)}\n`);
+    });
+    sock.on('error', () => {});
+  });
+  server.on('error', (e) => process.stderr.write(`automation pipe: ${e.message}\n`));
+  server.listen(where, () => { if (process.platform !== 'win32') { try { fs.chmodSync(where, 0o600); } catch { /* ignore */ } } });
+  app.on('will-quit', () => server.close());
+}
+
+async function handleAutomation(method, p) {
+  if (!win) return { error: 'NetDraw window is not ready' };
+  const js = (code) => win.webContents.executeJavaScript(code, true);
+  if (method === 'ping') return { result: { version: app.getVersion(), file: await js('window.app.filePath') } };
+  if (method === 'open') {
+    if (!p.file || !fs.existsSync(p.file)) return { error: `File not found: ${p.file}` };
+    await js(`window.app.openPath(${JSON.stringify(path.resolve(p.file))})`);
+    return { result: { opened: p.file } };
+  }
+  if (method === 'render_preview' || method === 'export') {
+    const snap = await js('window.app.api("snapshot")');
+    const R = await renderer();
+    const { normalize } = await import(pathToFileURL(path.join(SRC, 'js', 'model.js')).href);
+    const doc = normalize(JSON.parse(snap.result.json));
+    const svg = R.renderSVG(doc);
+    const k = doc.page.mmPerPx || 0.2;
+    if (method === 'render_preview') {
+      const scale = Math.max(0.2, Math.min(2, Number(p.scale) || Math.min(1, 1600 / doc.page.width)));
+      return { result: { png: (await renderPng(svg, doc.page.width, doc.page.height, scale)).toString('base64'), width: Math.round(doc.page.width * scale), height: Math.round(doc.page.height * scale) } };
+    }
+    const out = path.resolve(p.out || '');
+    if (!p.out) return { error: '"out" (target file) is required' };
+    if (/\.pdf$/i.test(out)) fs.writeFileSync(out, await renderPdf(svg, doc.page.width * k, doc.page.height * k));
+    else if (/\.svg$/i.test(out)) {
+      const faces = {};
+      for (const n of ['Regular', 'Medium', 'SemiBold', 'Bold']) faces[n] = await fontBase64(n);
+      fs.writeFileSync(out, svg.replace(/^(<svg[^>]*>)/, `$1\n<style>${R.fontFaceCSS((n) => `data:font/ttf;base64,${faces[n]}`)}</style>`));
+    } else fs.writeFileSync(out, await renderPng(svg, doc.page.width, doc.page.height, Number(p.scale) || 2));
+    return { result: { written: out } };
+  }
+  const r = await js(`window.app.api(${JSON.stringify(method)}, ${JSON.stringify(p)})`);
+  return r && r.error ? { error: r.error } : { result: r ? r.result : null };
+}
+
+// Claude Desktop config files that exist (or the default one), for "Connect to Claude".
+function claudeDesktopConfigs() {
+  const home = os.homedir();
+  const out = [];
+  if (process.platform === 'win32') {
+    out.push(path.join(app.getPath('appData'), 'Claude', 'claude_desktop_config.json'));
+    const pk = path.join(process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local'), 'Packages');
+    try {
+      for (const d of fs.readdirSync(pk)) if (/^Claude_/i.test(d)) out.push(path.join(pk, d, 'LocalCache', 'Roaming', 'Claude', 'claude_desktop_config.json'));
+    } catch { /* no store install */ }
+  } else if (process.platform === 'darwin') out.push(path.join(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'));
+  else out.push(path.join(home, '.config', 'Claude', 'claude_desktop_config.json'));
+  const existing = out.filter((f) => fs.existsSync(path.dirname(f)));
+  return existing.length ? existing : out.slice(0, 1);
+}
+
+function mcpInfo() {
+  const entry = { command: exePath(), args: ['--mcp'] };
+  return {
+    exe: exePath(),
+    desktop: JSON.stringify({ mcpServers: { netdraw: entry } }, null, 2),
+    claudeCode: `claude mcp add --scope user netdraw -- "${exePath()}" --mcp`,
+    configs: claudeDesktopConfigs(),
+  };
+}
+
+function installClaudeDesktop() {
+  const done = [];
+  for (const f of claudeDesktopConfigs()) {
+    let cfg = {};
+    if (fs.existsSync(f)) {
+      const raw = fs.readFileSync(f, 'utf8');
+      try { cfg = raw.trim() ? JSON.parse(raw) : {}; } catch { throw new Error(`${f} is not valid JSON; not changed.`); }
+      fs.writeFileSync(`${f}.bak`, raw);
+    } else fs.mkdirSync(path.dirname(f), { recursive: true });
+    cfg.mcpServers = { ...(cfg.mcpServers || {}), netdraw: { command: exePath(), args: ['--mcp'] } };
+    fs.writeFileSync(f, JSON.stringify(cfg, null, 2));
+    done.push(f);
+  }
+  return done;
+}
+
 // ------------------------------------------------------------------------------------------------ recent files
 function recent() {
   try { return JSON.parse(fs.readFileSync(RECENT(), 'utf8')).filter((p) => fs.existsSync(p)); } catch { return []; }
@@ -205,6 +310,7 @@ function buildMenu() {
       label: '&Help',
       submenu: [
         item('Keyboard and mouse', 'shortcuts'),
+        item('Connect Claude / AI assistant (MCP)…', 'mcp'),
         {
           label: 'Set up on this PC (Start menu, open .netdraw files)', click: () => {
             try { dialog.showMessageBox(win, { type: 'info', title: 'NetDraw', message: registerFileType() }); } catch (e) { dialog.showErrorBox('NetDraw', String(e.message || e)); }
@@ -331,6 +437,9 @@ function wireIpc() {
     return ['save', 'discard', 'cancel'][r.response];
   });
   ipcMain.handle('fontBase64', (_e, n) => fontBase64(n));
+  ipcMain.handle('mcpInfo', () => mcpInfo());
+  ipcMain.handle('mcpInstallDesktop', () => installClaudeDesktop());
+  ipcMain.on('copyText', (_e, t) => { const r = clipboard.writeText(t); if (r?.catch) r.catch(() => {}); });
   ipcMain.on('version', (e) => { e.returnValue = app.getVersion(); });
   ipcMain.on('setTheme', (_e, t) => {
     nativeTheme.themeSource = ['light', 'dark'].includes(t) ? t : 'system';
@@ -367,7 +476,16 @@ function wireIpc() {
 }
 
 // ------------------------------------------------------------------------------------------------ start
-if (process.argv.includes('--setup')) {
+if (mcpMode) {
+  // MCP server over stdio. It runs in Node mode (reliable stdin/stdout on every platform) as a child of this process.
+  const child = spawn(process.execPath, [path.join(__dirname, 'mcp.js')], {
+    stdio: 'inherit',
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', NETDRAW_EXE: exePath(), NETDRAW_ELECTRON: process.execPath, NETDRAW_APP: path.join(__dirname, '..') },
+    windowsHide: true,
+  });
+  child.on('exit', (code) => app.exit(code ?? 0));
+  child.on('error', (e) => { process.stderr.write(`netdraw mcp: ${e.message}\n`); app.exit(1); });
+} else if (process.argv.includes('--setup')) {
   // scripted "Help > Set up on this PC"
   app.whenReady().then(() => {
     try { process.stdout.write(`${registerFileType()}\n`); app.exit(0); } catch (e) { process.stderr.write(`${e.message}\n`); app.exit(1); }
@@ -402,6 +520,7 @@ if (process.argv.includes('--setup')) {
     wireIpc();
     const f = fileArg(process.argv);
     createWindow(f ? path.resolve(f) : null);
+    startAutomationServer();
   });
   app.on('window-all-closed', () => app.quit());
 }

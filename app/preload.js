@@ -28,4 +28,7 @@ contextBridge.exposeInMainWorld('netdrawHost', {
   recoverInfo: () => ipcRenderer.invoke('recoverInfo'),
   listTemplates: () => ipcRenderer.invoke('listTemplates'),
   exportPdf: (o) => ipcRenderer.invoke('exportPdf', o),
+  mcpInfo: () => ipcRenderer.invoke('mcpInfo'),
+  mcpInstallDesktop: () => ipcRenderer.invoke('mcpInstallDesktop'),
+  copyText: (t) => ipcRenderer.send('copyText', t),
 });

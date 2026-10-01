@@ -1,12 +1,11 @@
 {
   "name": "netdraw",
   "productName": "NetDraw",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Drag-and-drop network and architecture diagram editor",
   "main": "app/main.js",
   "author": "Jordy Thomassen",
-  "license": "UNLICENSED",
-  "private": true,
+  "license": "MIT",
   "type": "commonjs",
   "scripts": {
     "start": "electron .",
@@ -71,5 +70,9 @@
       "allowToChangeInstallationDirectory": true,
       "artifactName": "NetDraw-Setup-${version}.${ext}"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jordy816/netdraw.git"
   }
 }

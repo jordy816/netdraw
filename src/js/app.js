@@ -11,6 +11,7 @@ import {
 } from './presets.js';
 import { GLYPH_LABEL } from './glyphs.js';
 import { measure } from './textmetrics.js';
+import * as API from './api.js';
 import { parsePath, startPoint, endPoint, pointAt } from './path.js';
 
 const $ = (s) => document.querySelector(s);
@@ -69,6 +70,41 @@ class App {
       host.clearAutosave?.();
     }
     if (p) this.openPath(p, true);
+  }
+
+  // ---------------------------------------------------------------------------------------------- automation (MCP)
+  // Called by the main process for MCP clients. Changes are normal undo steps, so you can take them back.
+  async api(method, params = {}) {
+    try {
+      if (method === 'save') {
+        const p = params.path || this.filePath;
+        if (!p) return { error: 'The open drawing has no file yet: pass "path" (a .netdraw file) to save it.' };
+        const saved = await host.saveFile({ path: p, text: this.serialize(), suggestedName: this.suggested('netdraw') });
+        this.filePath = saved; this.fileName = saved.split(/[\\/]/).pop();
+        this.dirty = false; host.setDirty(false); host.clearAutosave?.(); this.updateTitle();
+        return { result: { saved } };
+      }
+      if (method === 'snapshot') return { result: { json: this.serialize(), path: this.filePath } };
+      if (method === 'new_drawing' && this.dirty && !params.discard_unsaved) {
+        return { error: 'NetDraw has unsaved changes. Save first (save), or pass discard_unsaved: true.' };
+      }
+      const before = this.snapshot();
+      const r = API.call(this.doc, method, params);
+      if (r.doc !== this.doc) {
+        this.setDoc(r.doc, null, null);
+        this.markDirty();
+      } else if (r.changed) {
+        this.record(before);
+        this.editor.renderAll();
+        const ids = r.result.ids || (r.result.id ? [r.result.id] : r.result.updated || []);
+        if (ids.length) this.editor.setSelection(ids.filter((id) => M.byId(this.doc, id)));
+        this.props.render();
+      }
+      if (r.changed) this.toast(`Assistant: ${method.replace(/_/g, ' ')}`);
+      return { result: r.result };
+    } catch (e) {
+      return { error: e.message };
+    }
   }
 
   // ---------------------------------------------------------------------------------------------- theme & autosave
@@ -207,8 +243,7 @@ class App {
       this.setDoc(M.newDoc(w, h), null, null);
     } else {
       const t = templates[pick - 1];
-      const d = M.normalize(JSON.parse(t.text));
-      for (const it of d.items) it.id = M.newId();
+      const d = M.normalize(JSON.parse(t.text));   // keep the ids: lines refer to their icons by id
       this.setDoc(d, null, null);
       this.toast(`New drawing from "${t.name}"`);
     }
@@ -886,6 +921,7 @@ class App {
       case 'routeStyle': ed.routeStyle = a; this.palette.render(); return this.syncToolbar();
       case 'edit': { const it = ed.selectedItems()[0]; if (it) this.inlineEdit(it); return null; }
       case 'shortcuts': return this.showShortcuts();
+      case 'mcp': return this.showMcp();
       case 'about': return this.toast(`NetDraw ${host.version || ''} · drag-and-drop network and architecture diagrams`);
       default: return null;
     }
@@ -1087,6 +1123,33 @@ class App {
       ['Ctrl+P / Ctrl+Shift+P', 'PNG for print (300 dpi) / PDF'], ['Ctrl+N', 'New drawing (paper size or template)'],
     ];
     this.modal('Keyboard and mouse', `<table class="keys">${rows.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join('')}</table>`);
+  }
+
+  async showMcp() {
+    const info = await host.mcpInfo?.();
+    if (!info) return this.toast('Only available in the desktop app');
+    const body = '<p>NetDraw has a built-in <b>MCP server</b>, so an AI assistant (Claude Desktop, Claude Code, or any other ' +
+      'MCP client) can build and change drawings. With NetDraw open it works on this drawing <b>live</b>, and every change ' +
+      'is an undo step. It can also work on .netdraw files directly.</p>' +
+      '<h4>Claude Desktop</h4><p>Adds NetDraw to its configuration. Restart Claude Desktop afterwards.</p>' +
+      '<div class="btns"><button class="btn primary" id="mcp-install">Add to Claude Desktop</button></div>' +
+      `<h4>Claude Code</h4><pre class="code" id="mcp-cc">${esc(info.claudeCode)}</pre>` +
+      '<div class="btns"><button class="btn" data-copy="mcp-cc">Copy command</button></div>' +
+      `<h4>Other MCP clients</h4><pre class="code" id="mcp-json">${esc(info.desktop)}</pre>` +
+      '<div class="btns"><button class="btn" data-copy="mcp-json">Copy configuration</button></div>' +
+      '<p class="hint" style="margin:10px 0 0">Try: "Draw our branch network in NetDraw: two sites, a firewall and the internet, then show me a preview."</p>';
+    return this.modal('Connect an AI assistant', body, [['Close', true]], (wrap) => {
+      wrap.querySelector('#mcp-install').addEventListener('click', async () => {
+        try {
+          const done = await host.mcpInstallDesktop();
+          this.toast(`Added to ${done.length} Claude Desktop configuration${done.length > 1 ? 's' : ''}. Restart Claude Desktop.`);
+        } catch (e) { this.toast(e.message, true); }
+      });
+      wrap.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => {
+        host.copyText(wrap.querySelector(`#${b.dataset.copy}`).textContent);
+        this.toast('Copied');
+      }));
+    });
   }
 
   modal(title, body, buttons = [['Close', true]], setup = null) {

@@ -268,6 +268,15 @@ export class Editor {
         square(b.x + b.w * fx, b.y + b.h * fy, { 'data-handle': 'resize', 'data-dir': dir, class: `h-resize h-${dir}` });
       }
     }
+    if (['node', 'text', 'badge', 'circle'].includes(it.type)) {
+      // corner handles scale the item (icon disc + glyph, text size, marker); side handles set a text's wrap width
+      const b = it.type === 'text' ? (this.bbox(it.id) || M.snapBox(it)) : M.snapBox(it);
+      const dirs = { nw: [0, 0], ne: [1, 0], se: [1, 1], sw: [0, 1] };
+      if (it.type === 'text') Object.assign(dirs, { e: [1, 0.5], w: [0, 0.5] });
+      for (const [dir, [fx, fy]] of Object.entries(dirs)) {
+        square(b.x + b.w * fx, b.y + b.h * fy, { 'data-handle': 'scale', 'data-dir': dir, class: `h-resize h-${dir}` });
+      }
+    }
     if (it.type === 'connector') {
       this.connectorOutline(it, px);
       const segs = parsePath(it.d);
@@ -412,6 +421,7 @@ export class Editor {
     if (d.kind === 'move') this.dragMove(d, p, e);
     else if (d.kind === 'marquee') this.dragMarquee(d, p);
     else if (d.kind === 'resize') this.dragResize(d, p, e);
+    else if (d.kind === 'scale') this.dragScale(d, p, e);
     else if (d.kind === 'connect') this.dragConnect(d, p);
     else if (d.kind === 'end') this.dragEndpoint(d, p, e);
     else if (d.kind === 'label') {
@@ -603,12 +613,67 @@ export class Editor {
     if (!it) return;
     const base = { p0: p, sx: e.clientX, sy: e.clientY, started: false, id: it.id, start: M.clone(it) };
     if (kind === 'resize') this.drag = { ...base, kind: 'resize', dir: h.dataset.dir, box: it.type === 'path' ? pathBBox(parsePath(it.d)) : null };
+    else if (kind === 'scale') {
+      const box = it.type === 'text' ? (this.bbox(it.id) || M.snapBox(it)) : M.snapBox(it);
+      const startD = new Map(this.doc.items.filter((c) => c.type === 'connector' && (c.from?.id === it.id || c.to?.id === it.id)).map((c) => [c.id, M.clone(c)]));
+      this.drag = { ...base, kind: 'scale', dir: h.dataset.dir, box, startD };
+    }
     else if (kind === 'end') this.drag = { ...base, kind: 'end', end: h.dataset.end };
     else if (kind === 'label') this.drag = { ...base, kind: 'label' };
     else if (kind === 'vertex' || kind === 'ctrl') {
       if (kind === 'vertex' && e.altKey) return this.removeVertex(it, Number(h.dataset.seg));
       this.drag = { ...base, kind, seg: Number(h.dataset.seg), k: h.dataset.k };
     }
+  }
+
+  // Scale an icon / text / marker from a corner handle (side handles on text set the wrap width).
+  dragScale(d, p, e) {
+    const it = M.byId(this.doc, d.id);
+    const st = d.start, b = d.box;
+    Object.assign(it, M.clone(st));
+    if (it.type === 'text' && (d.dir === 'e' || d.dir === 'w')) {
+      const edge = it.anchor === 'middle' ? Math.abs(p.x - it.x) * 2 : it.anchor === 'end' ? it.x - p.x : p.x - it.x;
+      const g = this.gridSnap && !e.altKey ? 10 : 1;
+      it.wrap = Math.max(40, Math.round(Math.abs(edge) / g) * g);
+      this.renderItems([it.id]);
+      return;
+    }
+    // opposite corner stays put for text; icons and markers scale around their centre
+    const ox = d.dir.includes('w') ? b.x + b.w : b.x, oy = d.dir.includes('n') ? b.y + b.h : b.y;
+    let k;
+    if (it.type === 'text') k = Math.max(Math.abs(p.x - ox) / (b.w || 1), Math.abs(p.y - oy) / (b.h || 1));
+    else k = Math.max(Math.abs(p.x - st.x), Math.abs(p.y - st.y)) / (st.r || 1);
+    k = Math.max(0.25, Math.min(8, k));
+    if (it.type === 'text') {
+      it.size = Math.max(6, Math.round(st.size * k * 2) / 2);
+      if (st.wrap) it.wrap = Math.round(st.wrap * it.size / st.size);
+    } else if (it.type === 'node') {
+      const r = Math.max(10, Math.round(st.r * k));
+      const f = r / st.r;
+      it.r = r;
+      it.glyphScale = Math.round((st.glyphScale ?? 1) * f * 1000) / 1000;
+      if (Math.abs(it.glyphScale - 1) < 0.001) delete it.glyphScale;
+      if (st.badge && st.badge.dx != null) { it.badge.dx = st.badge.dx * f; it.badge.dy = st.badge.dy * f; }
+      if (e.shiftKey) {   // Shift also scales the label
+        it.nameSize = Math.round(st.nameSize * f * 2) / 2; it.subSize = Math.round(st.subSize * f * 2) / 2;
+        it.nameDy = Math.round(st.nameDy * f); it.subDy = Math.round(st.subDy * f); it.subLh = Math.round(st.subLh * f);
+      }
+      // attached line ends move with the disc edge
+      for (const [cid, c0] of d.startD) {
+        const c = M.byId(this.doc, cid);
+        Object.assign(c, M.clone(c0));
+        const segs = parsePath(c0.d);
+        if (c0.from?.id === it.id) { moveStart(segs, c0.from.dx * (f - 1), c0.from.dy * (f - 1), !!c0.to); c.from = { ...c0.from, dx: c0.from.dx * f, dy: c0.from.dy * f }; }
+        if (c0.to?.id === it.id) { moveEnd(segs, c0.to.dx * (f - 1), c0.to.dy * (f - 1), !!c0.from); c.to = { ...c0.to, dx: c0.to.dx * f, dy: c0.to.dy * f }; }
+        c.d = serializePath(segs);
+      }
+    } else {
+      const r = Math.max(4, Math.round(st.r * k));
+      it.r = r;
+      if (it.type === 'badge') { it.size = Math.round(st.size * r / st.r * 2) / 2; it.textDy = Math.round(st.textDy * r / st.r * 10) / 10; }
+      if (st.ry != null) it.ry = Math.round(st.ry * r / st.r);
+    }
+    this.renderItems([it.id, ...d.startD.keys()]);
   }
 
   dragResize(d, p, e) {
