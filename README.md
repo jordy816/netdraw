@@ -23,7 +23,7 @@ The builds are not code-signed, so SmartScreen may ask "Run anyway" the first ti
 
 | | |
 |---|---|
-| **Icons** | 87 generic icons in 10 groups (users, network, security, SSE/SASE, servers, data, places, OT, symbols), in three sizes: *Overview*, *Flow*, *Document*. You can also put your own logo inside a disc. |
+| **Icons** | 87 generic icons in 10 groups (users, network, security, SSE/SASE, servers, data, places, OT, symbols), in three sizes: *Overview*, *Flow*, *Document*. Plus 31 brand logos (Cisco, Fortinet, Cloudflare, …), 26 Microsoft icons (Entra, Intune, Azure), and a *Vendor logo* badge for any icon. You can also put your own logo inside a disc. |
 | **Containers** | Site, cloud service, cloud hub, data centre, DMZ, trusted zone, management, section band, note, text box, pill. Dragging a container moves everything inside it. |
 | **Lines** | Drag from an icon's blue dot to another icon. Lines stay attached when icons move. Route them as curve, orthogonal or straight. There are 16 line styles with generic names, and you can save your own. A line can carry a label. |
 | **Explaining** | Numbered markers, `?` / `!` markers, notes with wrapping text, and a legend built from the line styles you used. |
@@ -142,5 +142,6 @@ to a release.
 
 ## Licence
 
-MIT, see `LICENSE`. The IBM Plex Sans fonts in `src/fonts/` are © IBM Corp. and licensed under the SIL Open Font
+MIT, see `LICENSE`. Bundled third-party material (brand marks, Microsoft icons, fonts) keeps its own terms; see
+`NOTICE.md`. The IBM Plex Sans fonts in `src/fonts/` are © IBM Corp. and licensed under the SIL Open Font
 License 1.1 (`src/fonts/OFL.txt`).

@@ -1,7 +1,8 @@
 // Left panel: icons, containers, connector styles, text, markers, shapes and the user's own library.
-import { GLYPH_GROUPS, GLYPH_LABEL, glyphMarkup } from './glyphs.js';
+import { GLYPH_GROUPS, GLYPH_LABEL, VENDOR_GROUPS, glyphMarkup } from './glyphs.js';
 import {
-  PALETTE, GLYPH_COLOR, NODE_STYLES, ZONE_PRESETS, FLOW_PRESETS, TEXT_PRESETS, BADGE_PRESETS,
+  PALETTE, GLYPH_COLOR, NODE_STYLES, ZONE_PRESETS, FLOW_PRESETS, TEXT_PRESETS, BADGE_PRESETS, VENDOR_DEVICES,
+  makeNode, makeDevice,
 } from './presets.js';
 import { renderItem, esc, markerDefs } from './render.js';
 import * as M from './model.js';
@@ -52,6 +53,11 @@ export class Palette {
         `${inactive ? ` stroke="${c}" stroke-width="2" stroke-dasharray="5 4"` : ''}/>` +
         `<g transform="scale(0.66)">${glyphMarkup(st.glyphSet, g, 0, 0, inactive ? c : '#fff', inactive ? '#fff' : c)}</g></svg>`;
     };
+    // vendor icons are drawn with the real renderer (logo badges, rings), scaled into the tile
+    const nodeTile = (n) => `<svg viewBox="-40 -40 80 80" width="40" height="40">${renderItem({ ...n, name: '', sub: '' })}</svg>`;
+    const match = (label, key, group = '') => !q || label.toLowerCase().includes(q) || key.includes(q) || group.toLowerCase().includes(q);
+    const devices = VENDOR_DEVICES.filter((d) => match(d.label, d.key, GLYPH_LABEL[d.brand] || ''));
+    const vgroups = VENDOR_GROUPS.map(([name, keys]) => [name, keys.filter((k) => match(GLYPH_LABEL[k] || k, k, name))]).filter(([, k]) => k.length);
     const lib = this.library();
     const html = [];
     html.push('<div class="pal-search"><input id="pal-q" type="search" placeholder="Search icons…" value="' + esc(this.filter) + '"></div>');
@@ -60,6 +66,14 @@ export class Palette {
       '</div>' + groups.map(([name, keys]) => `<div class="pal-group">${esc(name)}</div><div class="tiles icons">` +
         keys.map((g) => tile({ kind: 'node', glyph: g }, disc(g), GLYPH_LABEL[g])).join('') + '</div>').join('') +
       (groups.length ? '' : '<p class="hint">No icons match.</p>') + '</details>');
+    if (devices.length) {
+      html.push(`<details${q ? ' open' : ''} data-sec="devices"><summary>Vendor devices</summary><div class="tiles icons">` +
+        devices.map((d) => tile({ kind: 'device', key: d.key }, nodeTile(makeDevice(d, 0, 0, this.nodeStyle)), d.label)).join('') + '</div></details>');
+    }
+    for (const [name, keys] of vgroups) {
+      html.push(`<details${q ? ' open' : ''} data-sec="${esc(name)}"><summary>${esc(name)}</summary><div class="tiles icons">` +
+        keys.map((k) => tile({ kind: 'node', glyph: k }, nodeTile(makeNode(k, 0, 0, this.nodeStyle)), GLYPH_LABEL[k])).join('') + '</div></details>');
+    }
     if (!q) {
       html.push('<details open><summary>Containers</summary><div class="tiles zones">' +
         ZONE_PRESETS.map((p) => tile({ kind: 'zone', key: p.key },
@@ -94,6 +108,11 @@ export class Palette {
       '</div><div class="btns"><button class="btn" id="lib-add">Add selection to library</button></div>' +
       '<p class="hint">Keep your own logos and building blocks here. Paste an image with <kbd>Ctrl</kbd>+<kbd>V</kbd> or drop a file on the canvas.</p></details>');
     this.root.innerHTML = html.join('');
+    this.openSecs = this.openSecs || new Set();
+    this.root.querySelectorAll('details[data-sec]').forEach((d) => {
+      if (!q && this.openSecs.has(d.dataset.sec)) d.open = true;
+      d.addEventListener('toggle', () => { if (!q) { if (d.open) this.openSecs.add(d.dataset.sec); else this.openSecs.delete(d.dataset.sec); } });
+    });
     this.wire();
   }
 

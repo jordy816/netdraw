@@ -46,7 +46,7 @@ const TOOLS = [
   {
     name: 'add_items',
     description: 'Add icons, containers, notes, texts and numbered markers in one call. Returns their ids in the same order. ' +
-      'icon: {kind:"icon", glyph, x, y, name, sub, color?, badge?, inactive?, style?}; container: {kind:"container", preset?, x, y, w?, h?, title?, sub?, body?}; ' +
+      'icon: {kind:"icon", glyph, x, y, name, sub, color?, badge?, vendor?, inactive?, style?} (vendor = brand like fortinet, cisco, cloudflare: vendor colour + logo badge); container: {kind:"container", preset?, x, y, w?, h?, title?, sub?, body?}; ' +
       'note: {kind:"note", x, y, w, h, title?, body}; text: {kind:"text", preset?, x, y, text, size?, color?, anchor?, wrap?}; marker: {kind:"marker", x, y, text, color?}. ' +
       'x/y of an icon is its disc centre; of a container its top-left corner; of a text its anchor on the baseline.',
     inputSchema: {

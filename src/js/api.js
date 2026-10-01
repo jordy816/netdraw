@@ -4,8 +4,9 @@ import * as M from './model.js';
 import {
   PALETTE, GLYPH_COLOR, NODE_STYLES, ZONE_PRESETS, TEXT_PRESETS, FLOW_PRESETS, BADGE_PRESETS, PAPER_SIZES,
   makeNode, makeZone, makeText, makeBadge2, makeConnector, makeBadge, paperPx, flowLabel, describePage, MM_PER_PX,
+  BRANDS, VENDOR_DEVICES, setVendor,
 } from './presets.js';
-import { GLYPH_GROUPS, GLYPH_LABEL, GLYPHS_A } from './glyphs.js';
+import { GLYPH_GROUPS, GLYPH_LABEL, GLYPHS_A, VENDOR_GROUPS } from './glyphs.js';
 import { route, parsePath, startPoint, endPoint, pathBBox, labelBelow } from './path.js';
 import { measure } from './textmetrics.js';
 
@@ -29,6 +30,13 @@ const num = (v, name) => {
 export function styleGuide() {
   return {
     icons: Object.fromEntries(GLYPH_GROUPS.map(([g, keys]) => [g, Object.fromEntries(keys.map((k) => [k, GLYPH_LABEL[k]]))])),
+    vendor_icons: {
+      how: 'Brand logo discs (glyph "b-<brand>") and Microsoft architecture icons (glyph "ms-…") are used like any glyph. ' +
+        'For a vendor device, use a generic glyph plus vendor, e.g. {kind:"icon", glyph:"firewall", vendor:"fortinet", name:"FortiGate"}: ' +
+        'the disc takes the vendor colour and the vendor logo becomes the badge.',
+      ...Object.fromEntries(VENDOR_GROUPS.map(([g, keys]) => [g, Object.fromEntries(keys.map((k) => [k, GLYPH_LABEL[k]]))])),
+      devices: Object.fromEntries(VENDOR_DEVICES.map((d) => [d.label, { glyph: d.glyph, vendor: d.brand.slice(2) }])),
+    },
     icon_styles: Object.fromEntries(Object.entries(NODE_STYLES).map(([k, s]) => [k, `${s.label}: disc radius ${s.r}, name ${s.nameSize}px, details ${s.subSize}px`])),
     line_styles: Object.fromEntries(FLOW_PRESETS.map((f) => [f.key, f.label])),
     routes: ['curve', 'orthogonal', 'straight'],
@@ -94,6 +102,10 @@ function nodeFrom(spec, doc) {
   if (spec.color) n.color = color(spec.color);
   if (spec.inactive) n.inactive = true;
   if (spec.badge) n.badge = makeBadge(style, n.r, String(spec.badge));
+  if (spec.vendor) {
+    if (!setVendor(n, String(spec.vendor), style)) throw new ApiError(`Unknown vendor "${spec.vendor}" (brand keys from get_style_guide, without "b-")`);
+    if (spec.color) n.color = color(spec.color);
+  }
   return n;
 }
 
@@ -199,6 +211,10 @@ export function updateItems(doc, updates) {
       it.x = nx; it.y = ny;
       M.followNodes(doc, new Map([[it.id, delta]]), new Map());
       delete p.x; delete p.y;
+    }
+    if (it.type === 'node' && 'vendor' in p) {
+      if (p.vendor) { if (!setVendor(it, String(p.vendor))) throw new ApiError(`Unknown vendor "${p.vendor}"`); } else if (it.badge?.brand) delete it.badge;
+      delete p.vendor;
     }
     if (it.type === 'node' && 'badge' in p) {
       if (p.badge) it.badge = makeBadge(it.glyphSet === 'B' ? 'flow' : 'overview', it.r, String(p.badge)); else delete it.badge;

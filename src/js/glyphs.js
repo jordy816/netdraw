@@ -5,6 +5,9 @@
 // larger glyphs of the flow diagrams. Both are byte-for-byte ports of the generators that made the originals,
 // so do not "tidy" the numbers: exact output depends on them.
 
+import { BRANDS, MSICONS, VENDOR_GROUPS } from './vendor.js';
+import { parsePath, pathBBox } from './path.js';
+
 const SW = 'stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"';
 
 export const GLYPHS_A = {
@@ -406,6 +409,29 @@ export const GLYPH_LABEL = {
   sync: 'Sync / replication', power: 'Power', star: 'Highlight', search: 'Search / lookup', folder: 'File share', doc: 'Document',
   nodc: 'Not present',
 };
+
+// Brand marks (single colour, drawn like the other glyphs) and Microsoft's full-colour architecture icons.
+// Each mark is scaled so its bounding box fits a circle of diameter D (wide wordmarks get the full width).
+const BRAND_BOX = {};
+const fitMark = (key, cx, cy, D, fill) => {
+  const b = BRANDS[key];
+  const bb = BRAND_BOX[key] || (BRAND_BOX[key] = pathBBox(parsePath(b.d)));
+  const k = Math.round((D / Math.hypot(bb.w, bb.h)) * 10000) / 10000;
+  const tx = Math.round((cx - (bb.x + bb.w / 2) * k) * 100) / 100, ty = Math.round((cy - (bb.y + bb.h / 2) * k) * 100) / 100;
+  return `<path d="${b.d}" fill="${fill}" transform="translate(${tx} ${ty}) scale(${k})"/>`;
+};
+for (const [k, b] of Object.entries(BRANDS)) {
+  GLYPHS_A[k] = (cx, cy, g) => fitMark(k, cx, cy, 40, g);
+  GLYPH_LABEL[k] = b.title;
+}
+for (const [k, m] of Object.entries(MSICONS)) {
+  const uri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(m.svg)}`;
+  GLYPHS_A[k] = (cx, cy) => `<image href="${uri}" x="${cx - 20}" y="${cy - 20}" width="40" height="40"/>`;
+  GLYPH_LABEL[k] = m.title;
+}
+export { VENDOR_GROUPS };
+export const ALL_GROUPS = [...GLYPH_GROUPS, ...VENDOR_GROUPS];
+export const brandMark = (key, cx, cy, diameter, color) => (BRANDS[key] ? fitMark(key, cx, cy, diameter, color || BRANDS[key].hex) : '');
 
 // Catalogue shown in the properties panel: key, label.
 export const GLYPH_CATALOG = GLYPH_GROUPS.flatMap(([, keys]) => keys).map((k) => [k, GLYPH_LABEL[k] || k]);

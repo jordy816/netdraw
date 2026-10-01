@@ -8,6 +8,7 @@ import { renderSVG, fontFaceCSS, esc } from './render.js';
 import {
   makeNode, makeZone, ZONE_PRESETS, FLOW_PRESETS, TEXT_PRESETS, makeText, BADGE_PRESETS, makeBadge2,
   makeConnector, cloudPath, PALETTE, nodeStyleOf, PAPER_SIZES, paperPx, describePage, flowLabel, MM_PER_PX,
+  VENDOR_DEVICES, makeDevice,
 } from './presets.js';
 import { GLYPH_LABEL } from './glyphs.js';
 import { measure } from './textmetrics.js';
@@ -703,6 +704,9 @@ class App {
       const label = GLYPH_LABEL[spec.glyph] || '';
       const n = makeNode(spec.glyph, p.x, p.y, pal.nodeStyle, { name: label });
       this.addItems([n]);
+    } else if (spec.kind === 'device') {
+      const dev = VENDOR_DEVICES.find((d) => d.key === spec.key);
+      if (dev) this.addItems([makeDevice(dev, p.x, p.y, pal.nodeStyle)]);
     } else if (spec.kind === 'zone') {
       const pr = ZONE_PRESETS.find((z) => z.key === spec.key);
       const g = this.doc.page.grid || 10;

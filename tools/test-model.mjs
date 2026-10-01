@@ -169,4 +169,27 @@ t('Python library mirrors the app presets', () => {
   }
 });
 
+{
+  const { makeDevice, setVendor, VENDOR_DEVICES, BRANDS } = await import('../src/js/presets.js');
+  const { MSICONS } = await import('../src/js/vendor.js');
+  t('vendor icons render without errors', () => {
+    const doc = newDoc(800, 400);
+    doc.items = [
+      ...Object.keys(BRANDS).map((k, i) => ({ ...makeNode(k, 50 + i * 10, 50), id: `b${i}` })),
+      ...Object.keys(MSICONS).map((k, i) => ({ ...makeNode(k, 50 + i * 10, 150), id: `m${i}` })),
+      ...VENDOR_DEVICES.map((d, i) => ({ ...makeDevice(d, 50 + i * 10, 250), id: `d${i}` })),
+    ];
+    const svg = renderSVG(doc);
+    assert.ok(!/NaN|undefined/.test(svg));
+    assert.ok(doc.items.find((i) => i.glyph.startsWith('ms-')).ring);
+  });
+  t('setVendor gives brand colour and logo badge', () => {
+    const n = makeNode('firewall', 0, 0);
+    assert.ok(setVendor(n, 'fortinet'));
+    assert.equal(n.color, BRANDS['b-fortinet'].hex);
+    assert.equal(n.badge.brand, 'b-fortinet');
+    assert.ok(!setVendor(n, 'nonexistent'));
+  });
+}
+
 console.log(`\n${n} tests passed`);

@@ -3,3 +3,4 @@ dist/
 *.log
 /out/
 __pycache__/
+vendor-src/

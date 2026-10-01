@@ -1,0 +1,243 @@
+{
+ "colors": {
+  "b-cisco": {
+   "color": "#1BA0D7"
+  },
+  "b-fortinet": {
+   "color": "#EE3124"
+  },
+  "b-paloaltonetworks": {
+   "color": "#F04E23"
+  },
+  "b-junipernetworks": {
+   "color": "#84B135",
+   "glyphColor": "#0F172A"
+  },
+  "b-ubiquiti": {
+   "color": "#0559C9"
+  },
+  "b-mikrotik": {
+   "color": "#293239"
+  },
+  "b-pfsense": {
+   "color": "#212121"
+  },
+  "b-f5": {
+   "color": "#E4002B"
+  },
+  "b-citrix": {
+   "color": "#452170"
+  },
+  "b-cloudflare": {
+   "color": "#F38020"
+  },
+  "b-akamai": {
+   "color": "#0096D6"
+  },
+  "b-okta": {
+   "color": "#007DC1"
+  },
+  "b-splunk": {
+   "color": "#000000"
+  },
+  "b-wireguard": {
+   "color": "#88171A"
+  },
+  "b-openvpn": {
+   "color": "#EA7E20"
+  },
+  "b-tailscale": {
+   "color": "#242424"
+  },
+  "b-google": {
+   "color": "#4285F4"
+  },
+  "b-googlecloud": {
+   "color": "#4285F4"
+  },
+  "b-vmware": {
+   "color": "#607078"
+  },
+  "b-proxmox": {
+   "color": "#E57000"
+  },
+  "b-docker": {
+   "color": "#2496ED"
+  },
+  "b-kubernetes": {
+   "color": "#326CE5"
+  },
+  "b-redhat": {
+   "color": "#EE0000"
+  },
+  "b-linux": {
+   "color": "#FCC624",
+   "glyphColor": "#0F172A"
+  },
+  "b-apple": {
+   "color": "#000000"
+  },
+  "b-android": {
+   "color": "#3DDC84",
+   "glyphColor": "#0F172A"
+  },
+  "b-synology": {
+   "color": "#B5B5B6",
+   "glyphColor": "#0F172A"
+  },
+  "b-veeam": {
+   "color": "#00B336"
+  },
+  "b-github": {
+   "color": "#181717"
+  },
+  "b-sap": {
+   "color": "#0FAAFF"
+  },
+  "b-zoom": {
+   "color": "#0B5CFF"
+  },
+  "ms-entra-id": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-entra-private-access": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-entra-internet-access": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-conditional-access": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-entra-connect": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-intune": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-defender-for-cloud": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-microsoft-sentinel": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-key-vault": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-virtual-network": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-azure-firewall": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-vpn-gateway": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-expressroute": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-virtual-wan": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-application-gateway": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-front-door": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-load-balancer": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-bastion": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-virtual-machine": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-aks": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-app-service": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-storage-account": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-sql-database": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-log-analytics": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-azure-arc": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  },
+  "ms-subscription": {
+   "color": "#FFFFFF",
+   "ring": "#CBD5E1"
+  }
+ },
+ "devices": [
+  {
+   "key": "d-fortinet-firewall",
+   "brand": "b-fortinet",
+   "glyph": "firewall",
+   "label": "FortiGate"
+  },
+  {
+   "key": "d-cisco-router",
+   "brand": "b-cisco",
+   "glyph": "router",
+   "label": "Cisco router"
+  },
+  {
+   "key": "d-cisco-switch",
+   "brand": "b-cisco",
+   "glyph": "switch",
+   "label": "Cisco switch"
+  },
+  {
+   "key": "d-paloaltonetworks-firewall",
+   "brand": "b-paloaltonetworks",
+   "glyph": "firewall",
+   "label": "Palo Alto firewall"
+  },
+  {
+   "key": "d-ubiquiti-ap",
+   "brand": "b-ubiquiti",
+   "glyph": "ap",
+   "label": "UniFi access point"
+  },
+  {
+   "key": "d-cloudflare-vpn",
+   "brand": "b-cloudflare",
+   "glyph": "vpn",
+   "label": "Cloudflare Tunnel"
+  }
+ ]
+}

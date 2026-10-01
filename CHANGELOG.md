@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.1 — 2026-10-01
+
+- Vendor icons, kept to the well-known ones:
+  - 31 brand logos (Cisco, Fortinet, Palo Alto Networks, Cloudflare, Okta, VMware, Proxmox, Docker, Kubernetes, …), each a disc in the brand colour
+  - 26 Microsoft icons (Entra ID, Private/Internet Access, Conditional Access, Intune, Defender for Cloud, Sentinel, Azure networking and compute)
+  - 6 example vendor devices (FortiGate, Cisco router/switch, Palo Alto firewall, UniFi access point, Cloudflare Tunnel)
+- "Vendor logo" on any icon: the disc takes the vendor colour and the logo becomes a small badge, so you don't
+  need a separate icon for every product. Also available in the MCP (`vendor`) and the Python library (`vendor=`).
+- Third-party terms listed in NOTICE.md.
+
 ## 1.2.0 — 2026-10-01
 
 - Built-in MCP server (`NetDraw.exe --mcp`): AI assistants such as Claude Desktop and Claude Code can build and change

@@ -1,7 +1,10 @@
 // Properties panel: a form generated from a per-type schema. Edits apply live; one undo step per field edit.
 import * as M from './model.js';
-import { SWATCHES, DASHES, makeBadge, nodeStyleOf, NODE_STYLES, PAPER_SIZES, paperPx, describePage, MM_PER_PX } from './presets.js';
-import { GLYPH_CATALOG, glyphMarkup } from './glyphs.js';
+import { SWATCHES, DASHES, makeBadge, nodeStyleOf, NODE_STYLES, PAPER_SIZES, paperPx, describePage, MM_PER_PX, BRANDS, setVendor } from './presets.js';
+import { VENDOR_COLORS } from './vendor.js';
+import { GLYPH_CATALOG, GLYPH_LABEL, VENDOR_GROUPS, glyphMarkup } from './glyphs.js';
+
+const BRAND_OPTIONS = [['', 'None'], ...Object.entries(BRANDS).sort((a, b) => a[1].title.localeCompare(b[1].title)).map(([k, b]) => [k, b.title])];
 import { esc } from './render.js';
 
 const F = (key, label, kind, opts = {}) => ({ key, label, kind, ...opts });
@@ -14,6 +17,7 @@ const SCHEMA = {
     S('Label'), F('name', 'Name', 'text'), F('sub', 'Details (one line each)', 'textarea'),
     S('Icon'), F('glyph', 'Icon', 'glyph'), F('color', 'Colour', 'color'),
     F('inactive', 'Inactive (dashed outline)', 'check'), F('badge.text', 'Badge', 'text', { placeholder: 'e.g. AD' }),
+    F('badge.brand', 'Vendor logo', 'select', { options: BRAND_OPTIONS }),
     F('r', 'Disc radius', 'number', { step: 1, min: 6 }),
     F('glyphSet', 'Icon style', 'select', { options: [['A', 'Compact (overview)'], ['B', 'Large (flow)']] }),
     F('glyphScale', 'Icon scale', 'number', { step: 0.05, min: 0.2, placeholder: '1' }),
@@ -172,7 +176,9 @@ export class Props {
       }
       case 'glyph': {
         const n = objs[0];
-        return `<div class="row col">${lab}<div class="glyphs">${GLYPH_CATALOG.map(([g, l]) =>
+        const vg = VENDOR_GROUPS.find(([, keys]) => keys.includes(n.glyph));
+        const list = vg ? [...vg[1].map((k) => [k, GLYPH_LABEL[k]]), ...GLYPH_CATALOG] : GLYPH_CATALOG;
+        return `<div class="row col">${lab}<div class="glyphs">${list.map(([g, l]) =>
           `<button class="gl${same && v === g ? ' on' : ''}" data-glyph="${g}" title="${l}"><svg viewBox="-24 -24 48 48" width="34" height="34">` +
           `<circle r="22" fill="${n.inactive ? '#fff' : n.color}"${n.inactive ? ` stroke="${n.color}" stroke-width="2" stroke-dasharray="5 4"` : ''}/>` +
           `<g transform="scale(0.62)">${glyphMarkup(n.glyphSet, g, 0, 0, n.inactive ? n.color : '#fff', n.inactive ? '#fff' : n.color)}</g></svg></button>`).join('')}</div></div>`;
@@ -318,7 +324,10 @@ export class Props {
       if (type === 'node' && (key === 'x' || key === 'y') && typeof val === 'number' && o[key] !== val) {
         moved.set(o.id, { dx: key === 'x' ? val - o.x : 0, dy: key === 'y' ? val - o.y : 0 });
       }
-      if (key === 'badge.text') {
+      if (key === 'badge.brand') {
+        if (val) setVendor(o, val, nodeStyleOf(o));
+        else if (o.badge?.brand) delete o.badge;
+      } else if (key === 'badge.text') {
         if (!val) delete o.badge;
         else if (o.badge) o.badge.text = val;
         else o.badge = makeBadge(nodeStyleOf(o), o.r, val);
@@ -329,6 +338,15 @@ export class Props {
       } else if (val === undefined || (val === '' && ['dash', 'rotate', 'lineHeight', 'glyphScale', 'opacity', 'label', 'body', 'labelColor'].includes(key))) delete o[key];
       else o[key] = val;
       if (type === 'node' && key === 'glyph' && val === 'nodc') { o.inactive = true; }
+      if (type === 'node' && key === 'glyph') {
+        // brand and Microsoft icons bring their own disc colour; going back to a generic icon drops the ring
+        const vc = VENDOR_COLORS[val];
+        if (vc) {
+          o.color = vc.color;
+          if (vc.ring) o.ring = vc.ring; else delete o.ring;
+          if (vc.glyphColor) o.glyphColor = vc.glyphColor; else delete o.glyphColor;
+        } else if (o.ring) { delete o.ring; delete o.glyphColor; o.color = '#2563EB'; }
+      }
       if (o.id) ids.push(o.id);
     }
     if (moved.size) ids.push(...M.followNodes(this.app.doc, moved, new Map()));

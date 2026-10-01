@@ -1,7 +1,8 @@
 // Document -> SVG. Pure functions (no DOM), shared by the editor, the exporter, the CLI and the tests.
 // The element sequence per item mirrors the generators of the original drawings, which is what makes a converted
 // drawing render pixel-identical to its original.
-import { glyphMarkup } from './glyphs.js';
+import { glyphMarkup, brandMark } from './glyphs.js';
+import { BRANDS } from './vendor.js';
 import { wrapLines } from './textmetrics.js';
 import { parsePath, pointAt } from './path.js';
 
@@ -69,12 +70,17 @@ function renderNode(n) {
       `stroke-dasharray="${n.inactiveDash ?? '6 5'}"/>`;
     s += glyphMarkup(n.glyphSet, n.glyph, cx, cy, n.color, '#fff', n.glyphScale ?? 1);
   } else {
-    s = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${n.color}"/>`;
+    s = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${n.color}"${n.ring ? ` stroke="${n.ring}" stroke-width="${n.ringWidth ?? 1.5}"` : ''}/>`;
     if (n.image) s += renderNodeImage(n);
     else s += glyphMarkup(n.glyphSet, n.glyph, cx, cy, n.glyphColor || '#fff', n.color, n.glyphScale ?? 1);
   }
   const b = n.badge;
-  if (b && b.text) {
+  if (b && b.brand && BRANDS[b.brand]) {
+    // vendor logo badge: white disc ringed in the brand colour, with the brand mark
+    const hex = BRANDS[b.brand].hex, bx = cx + b.dx, by = cy + b.dy;
+    s += `<circle cx="${bx}" cy="${by}" r="${b.r}" fill="#fff" stroke="${hex}" stroke-width="${b.strokeWidth}"/>`;
+    s += brandMark(b.brand, bx, by, Math.round(b.r * 1.62 * 10) / 10, hex);
+  } else if (b && b.text) {
     const bc = b.color || n.color;
     s += `<circle cx="${cx + b.dx}" cy="${cy + b.dy}" r="${b.r}" fill="#fff" stroke="${bc}" stroke-width="${b.strokeWidth}"/>`;
     s += text(cx + b.dx, cy + b.dy + b.textDy, b.text, b.size, b.weight ?? 700, bc);

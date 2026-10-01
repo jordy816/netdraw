@@ -20,6 +20,11 @@ import html
 import json
 import math
 
+_VENDOR = json.load(open(__import__('os').path.join(__import__('os').path.dirname(__file__), 'vendor.json'), encoding='utf-8')) \
+    if __import__('os').path.exists(__import__('os').path.join(__import__('os').path.dirname(__file__), 'vendor.json')) else {'colors': {}, 'devices': []}
+VENDOR_COLORS = _VENDOR['colors']   # brand ('b-cisco') and Microsoft ('ms-entra-id') glyphs -> disc colour
+DEVICES = {d['label']: d for d in _VENDOR['devices']}
+
 PALETTE = {
     'client': '#2563EB', 'dc': '#16A34A', 'wan': '#0F766E', 'bc': '#7C3AED', 'ztb': '#4F46E5', 'zia': '#0284C7',
     'zpa': '#D97706', 'appc': '#EA580C', 'azure': '#0078D4', 'inet': '#64748B', 'sap': '#0891B2', 'fw': '#B91C1C',
@@ -116,16 +121,36 @@ class Doc:
             it['dash'] = dash
         return self._add(it)
 
-    def node(self, glyph, x, y, color, name=None, sub=None, badge=None, inactive=False, r=None, style=None,
-             name_color=PALETTE['ink'], sub_color=PALETTE['muted'], **over):
+    def node(self, glyph, x, y, color=None, name=None, sub=None, badge=None, inactive=False, r=None, style=None,
+             name_color=PALETTE['ink'], sub_color=PALETTE['muted'], vendor=None, **over):
+        """An icon. color=None takes the brand colour for 'b-…'/'ms-…' glyphs; vendor='fortinet' adds the vendor
+        colour and logo badge to a generic glyph (a FortiGate is node('firewall', x, y, vendor='fortinet'))."""
         st = NODE_STYLES[style or self.style]
         rr = r if r is not None else st['r']
+        vc = VENDOR_COLORS.get(glyph, {})
+        if vendor:
+            vkey = vendor if vendor.startswith('b-') else f'b-{vendor}'
+            if vkey not in VENDOR_COLORS:
+                raise ValueError(f'unknown vendor {vendor}')
+            color = color or VENDOR_COLORS[vkey]['color']
+        color = color or vc.get('color') or PALETTE['client']
         it = {'type': 'node', 'x': x, 'y': y, 'r': rr, 'color': color, 'glyph': glyph, 'glyphSet': st['glyphSet'],
               'name': _u(name) or '', 'nameSize': st['nameSize'], 'nameWeight': st['nameWeight'],
               'nameColor': name_color, 'nameDy': st['nameDy'], 'sub': _u(sub) or '', 'subSize': st['subSize'],
               'subColor': sub_color, 'subDy': st['subDy'], 'subLh': st['subLh']}
+        if vc.get('ring'):
+            it['ring'] = vc['ring']
+        if vc.get('glyphColor'):
+            it['glyphColor'] = vc['glyphColor']
         if inactive:
             it['inactive'] = True
+        if vendor:
+            b = st['badge']
+            dx, dy = (rr * b['k'][0], rr * b['k'][1]) if 'k' in b else b['d']
+            it['badge'] = {'text': '', 'brand': vkey, 'dx': dx, 'dy': dy, 'r': b['r'], 'strokeWidth': b['strokeWidth'],
+                           'size': b['size'], 'textDy': b['textDy']}
+            if VENDOR_COLORS[vkey].get('glyphColor'):
+                it['glyphColor'] = VENDOR_COLORS[vkey]['glyphColor']
         if badge:
             b = st['badge']
             if 'k' in b:

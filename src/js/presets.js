@@ -1,3 +1,5 @@
+import { BRANDS, VENDOR_COLORS, VENDOR_DEVICES } from './vendor.js';
+
 // Visual vocabulary of NetDraw: palette, node styles, containers, line styles, annotations and paper sizes.
 // The core presets reproduce the exact numbers of the reference drawings the house style came from; do not tweak
 // them, or new drawings stop matching the existing ones.
@@ -51,6 +53,25 @@ export function nodeStyleOf(n) {
   return 'overview';
 }
 
+export { BRANDS, VENDOR_DEVICES };
+
+// A vendor's device: the generic icon in the vendor colour, with the vendor's logo as a badge (e.g. FortiGate).
+export function setVendor(n, brandKey, styleKey) {
+  const brand = BRANDS[brandKey] ? brandKey : BRANDS[`b-${brandKey}`] ? `b-${brandKey}` : null;
+  if (!brand) return false;
+  n.color = BRANDS[brand].hex;
+  const vc = VENDOR_COLORS[brand];
+  if (vc?.glyphColor) n.glyphColor = vc.glyphColor; else delete n.glyphColor;
+  n.badge = { ...makeBadge(styleKey || nodeStyleOf(n), n.r, ''), brand };
+  return true;
+}
+
+export function makeDevice(dev, x, y, styleKey = 'overview') {
+  const n = makeNode(dev.glyph, x, y, styleKey, { name: dev.label });
+  setVendor(n, dev.brand, styleKey);
+  return n;
+}
+
 export function makeBadge(styleKey, r, txt = 'AD') {
   const b = NODE_STYLES[styleKey].badge;
   const [dx, dy] = b.k ? [r * b.k[0], r * b.k[1]] : b.d;
@@ -59,11 +80,13 @@ export function makeBadge(styleKey, r, txt = 'AD') {
 
 export function makeNode(glyph, x, y, styleKey = 'overview', over = {}) {
   const st = NODE_STYLES[styleKey];
-  const color = over.color || PALETTE[GLYPH_COLOR[glyph] || 'client'];
+  const vc = VENDOR_COLORS[glyph];
+  const color = over.color || (vc ? vc.color : PALETTE[GLYPH_COLOR[glyph] || 'client']);
   const n = {
     type: 'node', x, y, r: st.r, color, glyph, glyphSet: st.glyphSet, name: '', nameSize: st.nameSize,
     nameWeight: st.nameWeight, nameColor: PALETTE.ink, nameDy: st.nameDy, sub: '', subSize: st.subSize,
-    subColor: PALETTE.muted, subDy: st.subDy, subLh: st.subLh, ...over,
+    subColor: PALETTE.muted, subDy: st.subDy, subLh: st.subLh,
+    ...(vc?.glyphColor ? { glyphColor: vc.glyphColor } : {}), ...(vc?.ring ? { ring: vc.ring } : {}), ...over,
   };
   if (glyph === 'nodc') { n.inactive = true; n.color = PALETTE.line; n.nameColor = PALETTE.muted; }
   return n;
