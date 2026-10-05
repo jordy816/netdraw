@@ -178,6 +178,19 @@ pre.code { margin: 0 0 8px; padding: 8px 10px; background: var(--hover); border:
 #toast.error { background: var(--danger); color: #fff; }
 #inline-edit { position: fixed; z-index: 30; border: 2px solid var(--accent); border-radius: 4px; padding: 2px 4px; resize: none; overflow: hidden; background: var(--field); color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; line-height: 1.25; box-shadow: 0 6px 20px var(--shadow); }
 
+/* ---------------------------------------------------------------- presentation mode */
+#presentbar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: none; align-items: center; gap: 2px; padding: 4px 6px; background: var(--panel); border: 1px solid var(--line2); border-radius: 11px; box-shadow: 0 10px 30px var(--shadow); z-index: 45; transition: opacity .35s; }
+body.present { grid-template-rows: 1fr; }
+body.present #toolbar, body.present #status, body.present #palette, body.present #props, body.present .ruler, body.present #ruler-corner { display: none !important; }
+body.present main { grid-template-columns: minmax(0, 1fr); }
+body.present #viewport, body.present #viewport * { cursor: grab; }
+body.present #viewport.panning, body.present #viewport.panning * { cursor: grabbing; }
+body.present #presentbar { display: flex; }
+body.present.idle #presentbar { opacity: 0; pointer-events: none; }
+body.present #toast { bottom: 84px; }
+.menu .checkable .tick { visibility: hidden; color: var(--accent); font-size: 13px; }
+.menu .checkable.checked .tick { visibility: visible; }
+
 /* ---------------------------------------------------------------- narrow windows */
 @media (max-width: 1440px) { .docname { max-width: 140px; } }
 @media (max-width: 1320px) {

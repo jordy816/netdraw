@@ -44,7 +44,7 @@ export class Editor {
 
   // ---------------------------------------------------------------------------------------------- rulers (mm)
   drawRulers(mouse) {
-    const show = this.showRulers;
+    const show = this.showRulers && !this.present;
     this.vp.classList.toggle('rulers', show);
     if (!show || !this.rx) return;
     const r = this.vp.getBoundingClientRect();
@@ -146,7 +146,7 @@ export class Editor {
   fit() {
     const r = this.vp.getBoundingClientRect();
     const { width: W, height: H } = this.doc.page;
-    const m = this.showRulers ? RULER : 0;
+    const m = this.showRulers && !this.present ? RULER : 0;
     this.zoom = Math.max(0.05, Math.min((r.width - m - 60) / W, (r.height - m - 60) / H, 4));
     this.panX = m + (r.width - m - W * this.zoom) / 2;
     this.panY = m + (r.height - m - H * this.zoom) / 2;
@@ -201,6 +201,7 @@ export class Editor {
   drawOverlay() {
     const ov = this.ov;
     ov.replaceChildren();
+    if (this.present) return;
     const px = 1 / this.zoom;
     const { width: W, height: H } = this.doc.page;
     if (this.showGrid) {
@@ -322,7 +323,7 @@ export class Editor {
     vp.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     vp.addEventListener('contextmenu', (e) => this.onContext(e));
     vp.addEventListener('pointerleave', () => { if (!this.drag && this.hover) { this.hover = null; this.drawOverlay(); } });
-    window.addEventListener('resize', () => this.layout());
+    window.addEventListener('resize', () => (this.present ? this.fit() : this.layout()));
   }
 
   itemFromEvent(e) {
@@ -347,7 +348,8 @@ export class Editor {
   onDown(e) {
     this.app.closeMenus?.();
     this.app.commitInline?.();
-    if (e.button === 1 || (e.button === 0 && (this.spaceDown || this.mode === 'pan'))) {
+    // presentation mode is view-only: any drag pans, nothing can be selected or changed
+    if (e.button === 1 || (e.button === 0 && (this.present || this.spaceDown || this.mode === 'pan'))) {
       e.preventDefault();
       this.drag = { kind: 'pan', sx: e.clientX, sy: e.clientY, px: this.panX, py: this.panY };
       this.vp.classList.add('panning');
@@ -392,6 +394,7 @@ export class Editor {
   onMove(e) {
     const d = this.drag;
     if (!d) {
+      if (this.present) return;
       if (e.target.closest?.('#viewport')) {
         const p = this.toDoc(e);
         this.app.onPointer?.(p);
@@ -828,6 +831,7 @@ export class Editor {
 
   // ---------------------------------------------------------------------------------------------- double click
   onDouble(e) {
+    if (this.present) return undefined;
     const it = this.itemFromEvent(e);
     if (!it) return;
     if (it.type === 'connector' && it.label && e.target.tagName === 'text') return this.app.inlineEdit(it);
@@ -850,6 +854,7 @@ export class Editor {
 
   onContext(e) {
     e.preventDefault();
+    if (this.present) return;
     const it = this.itemFromEvent(e);
     this.app.contextMenu(e.clientX, e.clientY, it);
   }

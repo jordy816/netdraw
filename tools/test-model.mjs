@@ -192,4 +192,17 @@ t('Python library mirrors the app presets', () => {
   });
 }
 
+{
+  const { darkColor, darkSVG } = await import('../src/js/render.js');
+  t('dark colour conversion matches the preview filter', () => {
+    assert.equal(darkColor('#fff'), '#080808');
+    assert.equal(darkColor('#FFFFFF'), '#080808');
+    assert.equal(darkColor('none'), 'none');
+    const ink = darkColor('#0F172A');
+    assert.ok(parseInt(ink.slice(1, 3), 16) > 180, ink);          // dark ink becomes light
+    const out = darkSVG('<rect fill="#fff" stroke="#CBD5E1"/><image href="data:image/png;base64,AAAA"/>');
+    assert.ok(out.includes('fill="#080808"') && out.includes('base64,AAAA'));
+  });
+}
+
 console.log(`\n${n} tests passed`);

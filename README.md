@@ -29,7 +29,8 @@ The builds are not code-signed, so SmartScreen may ask "Run anyway" the first ti
 | **Explaining** | Numbered markers, `?` / `!` markers, notes with wrapping text, and a legend built from the line styles you used. |
 | **Layout** | Grid and snapping to other items, align / distribute, groups, lock, z-order, and rulers in millimetres. Corner handles resize icons, text and markers. |
 | **Paper** | A4–A0 portrait/landscape, slide 16:9, and a wide overview size. The print scale is 1 px = 0.2 mm, so you always know what fits on A3. |
-| **Export** | PNG 2× for Word, PNG at 300 dpi for print, a vector PDF at paper size, and SVG with the fonts embedded. *Copy as image* (`Ctrl+Shift+C`) pastes straight into Word. |
+| **Export** | PNG 2× for Word, PNG at 300 dpi for print, a vector PDF at paper size, and SVG with the fonts embedded. *Copy as image* (`Ctrl+Shift+C`) pastes straight into Word. *Export in dark colours* gives the same exports on a dark background. |
+| **Presenting** | Presentation mode (`F5`) hides all tools and shows the drawing view-only in the whole window, for screen sharing. `F11` is full screen, `Esc` goes back to editing. |
 | **Comfort** | Dark mode: the drawing is previewed dark, exports stay white. Autosave and crash recovery, templates, find (`Ctrl+F`), and an adjustable interface size. |
 
 **Help → Keyboard and mouse** has the full list of shortcuts.
@@ -68,7 +69,7 @@ something like "draw our two branch offices, the firewall and the internet, then
 
 ```
 NetDraw.exe drawing.netdraw                                     open a file
-NetDraw.exe --export drawing.netdraw --out drawing.png --scale 2
+NetDraw.exe --export drawing.netdraw --out drawing.png --scale 2   (add --dark for dark colours)
 NetDraw.exe --export drawing.netdraw --out drawing.pdf          vector, at paper size
 NetDraw.exe --export drawing.netdraw --out drawing.svg
 NetDraw.exe --setup                                             Start-menu shortcut + .netdraw association

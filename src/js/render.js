@@ -195,6 +195,27 @@ export function renderSVG(doc, opts = {}) {
   return out.join('\n');
 }
 
+// ------------------------------------------------------------------------------------------------ dark export
+// The same colour conversion as the dark preview on screen (CSS: invert(1) hue-rotate(180deg) brightness(.92)
+// contrast(.94), computed in sRGB), applied to the colours in the SVG itself. The result stays vector, so dark
+// PNG, PDF and SVG exports all match what the editor shows. Embedded images keep their own colours.
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
+export function darkColor(hex) {
+  let h = String(hex).trim().toLowerCase();
+  if (h === 'white') h = '#ffffff';
+  if (h === 'black') h = '#000000';
+  if (/^#[0-9a-f]{3}$/.test(h)) h = `#${[...h.slice(1)].map((c) => c + c).join('')}`;
+  if (!/^#[0-9a-f]{6}$/.test(h)) return hex;
+  let [r, g, b] = [1, 3, 5].map((i) => 1 - parseInt(h.slice(i, i + 2), 16) / 255);                        // invert(1)
+  [r, g, b] = [-0.574 * r + 1.43 * g + 0.144 * b, 0.426 * r + 0.43 * g + 0.144 * b, 0.426 * r + 1.43 * g - 0.856 * b].map(clamp01);   // hue-rotate(180deg)
+  [r, g, b] = [r, g, b].map((v) => clamp01(v * 0.92)).map((v) => clamp01((v - 0.5) * 0.94 + 0.5));        // brightness, contrast
+  return `#${[r, g, b].map((v) => Math.round(v * 255).toString(16).padStart(2, '0')).join('')}`.toUpperCase();
+}
+
+export function darkSVG(svg) {
+  return svg.replace(/\b(fill|stroke|stop-color)="(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|white|black)"/g, (_m, a, c) => `${a}="${darkColor(c)}"`);
+}
+
 export function renderItemWrapped(it, hit = true) {
   const h = hit && it.type === 'connector'
     ? `<path class="hit" d="${attr(it.d)}" fill="none" stroke="transparent" stroke-width="${Math.max(14, it.width + 10)}"/>` : '';

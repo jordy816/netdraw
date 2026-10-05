@@ -83,6 +83,7 @@ export const host = E ? {
   pathForFile() { return null; },
   fontBase64,
   version: 'web',
+  toggleFullScreen() { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); },
   async listTemplates() {
     try {
       const idx = await (await fetch('templates/index.json')).json();

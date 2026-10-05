@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('netdrawHost', {
   version: ipcRenderer.sendSync('version'),
   setTheme: (t) => ipcRenderer.send('setTheme', t),
   setUiZoom: (f) => ipcRenderer.send('setUiZoom', f),
+  setPresenting: (on) => ipcRenderer.send('setPresenting', on),
+  toggleFullScreen: () => ipcRenderer.send('toggleFullScreen'),
   autosave: (d) => ipcRenderer.send('autosave', d),
   clearAutosave: () => ipcRenderer.send('clearAutosave'),
   recoverInfo: () => ipcRenderer.invoke('recoverInfo'),

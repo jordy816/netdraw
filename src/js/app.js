@@ -4,7 +4,7 @@ import { Props } from './props.js';
 import { Palette } from './palette.js';
 import { host, readAsDataURL } from './platform.js';
 import * as M from './model.js';
-import { renderSVG, fontFaceCSS, esc } from './render.js';
+import { renderSVG, fontFaceCSS, esc, darkSVG } from './render.js';
 import {
   makeNode, makeZone, ZONE_PRESETS, FLOW_PRESETS, TEXT_PRESETS, makeText, BADGE_PRESETS, makeBadge2,
   makeConnector, cloudPath, PALETTE, nodeStyleOf, PAPER_SIZES, paperPx, describePage, flowLabel, MM_PER_PX,
@@ -106,6 +106,38 @@ class App {
     } catch (e) {
       return { error: e.message };
     }
+  }
+
+  // ---------------------------------------------------------------------------------------------- presentation mode
+  // A clean, view-only view for screen sharing: no panels, toolbar, rulers or handles. Drag pans, wheel zooms.
+  setPresenting(on) {
+    const ed = this.editor;
+    if (on === ed.present) return;
+    this.commitInline();
+    this.closeMenus();
+    if (on) {
+      this.viewBeforePresent = { zoom: ed.zoom, panX: ed.panX, panY: ed.panY, sel: [...ed.sel] };
+      ed.setSelection([]);
+    }
+    ed.present = on;
+    ed.hover = null;
+    document.body.classList.toggle('present', on);
+    host.setPresenting?.(on);
+    requestAnimationFrame(() => {
+      if (on) ed.fit();
+      else {
+        const v = this.viewBeforePresent;
+        if (v) { ed.zoom = v.zoom; ed.panX = v.panX; ed.panY = v.panY; ed.setSelection(v.sel.filter((id) => M.byId(this.doc, id))); }
+        ed.layout();
+      }
+    });
+    if (on) { this.wakePresentBar(); this.toast('Presentation mode · drag to pan, scroll to zoom · Esc to leave'); }
+  }
+
+  wakePresentBar() {
+    document.body.classList.remove('idle');
+    clearTimeout(this.idleT);
+    this.idleT = setTimeout(() => document.body.classList.add('idle'), 2500);
   }
 
   // ---------------------------------------------------------------------------------------------- theme & autosave
@@ -368,7 +400,15 @@ class App {
     this.toast(`Line style "${name}" saved under Connectors`);
   }
 
+  // Exports are white unless "Export in dark" is switched on in the export menu.
+  get darkExport() { return store.get('netdraw.darkExport', false); }
+
   exportDoc(selectionOnly) {
+    const r = this.exportDocLight(selectionOnly);
+    return this.darkExport ? { doc: r.doc, svg: darkSVG(r.svg) } : r;
+  }
+
+  exportDocLight(selectionOnly) {
     if (!selectionOnly || !this.editor.sel.size) return { doc: this.doc, svg: renderSVG(this.doc) };
     const ids = M.expandGroups(this.doc, this.editor.sel);
     const b = M.union([...ids].map((id) => this.editor.bbox(id)).filter(Boolean));
@@ -388,7 +428,7 @@ class App {
     const css = fontFaceCSS((n) => `data:font/ttf;base64,${faces[n]}`);
     const out = svg.replace(/^(<svg[^>]*>)/, `$1\n<style>${css}</style>`);
     const p = await host.exportSvg({ svg: out, suggestedName: this.suggested('svg') });
-    if (p) this.toast(`Exported ${p.split(/[\\/]/).pop()}`);
+    if (p) this.toast(`Exported ${p.split(/[\\/]/).pop()}${this.darkExport ? ' (dark)' : ''}`);
   }
 
   async exportPng(scale = 2, selectionOnly = false) {
@@ -396,7 +436,7 @@ class App {
     const { doc, svg } = this.exportDoc(selectionOnly);
     try {
       const p = await host.exportPng({ svg, width: doc.page.width, height: doc.page.height, scale, suggestedName: this.suggested('png') });
-      if (p) this.toast(`Exported ${p.split(/[\\/]/).pop()} (${Math.round(doc.page.width * scale)} × ${Math.round(doc.page.height * scale)} px)`);
+      if (p) this.toast(`Exported ${p.split(/[\\/]/).pop()} (${Math.round(doc.page.width * scale)} × ${Math.round(doc.page.height * scale)} px${this.darkExport ? ', dark' : ''})`);
     } catch (e) { this.toast(`PNG export failed: ${e.message}`, true); }
   }
 
@@ -404,7 +444,7 @@ class App {
     const { doc, svg } = this.exportDoc(this.editor.sel.size > 0);
     try {
       await host.copyPng({ svg, width: doc.page.width, height: doc.page.height, scale });
-      this.toast(this.editor.sel.size ? 'Selection copied as image' : 'Drawing copied as image');
+      this.toast(`${this.editor.sel.size ? 'Selection' : 'Drawing'} copied as image${this.darkExport ? ' (dark)' : ''}`);
     } catch (e) { this.toast(`Copy failed: ${e.message}`, true); }
   }
 
@@ -875,6 +915,14 @@ class App {
         return this.toast(on ? 'Dark drawing preview on (exports stay white)' : 'Drawing shown as it exports');
       }
       case 'rulers': ed.showRulers = !ed.showRulers; store.set('netdraw.rulers', ed.showRulers); ed.fit(); return this.syncToolbar();
+      case 'darkExport': {
+        const on = !this.darkExport;
+        store.set('netdraw.darkExport', on);
+        this.syncToolbar();
+        return this.toast(on ? 'Exports are now dark (PNG, PDF, SVG, copy as image)' : 'Exports are white again');
+      }
+      case 'present': return this.setPresenting(!ed.present);
+      case 'fullscreen': return host.toggleFullScreen?.();
       case 'uiZoom': { const f = Number(a) || 1; store.set('netdraw.uiZoom', f); host.setUiZoom?.(f); return setTimeout(() => ed.layout(), 50); }
       case 'exportPngSel': return this.exportPng(Number(a) || 2, true);
       case 'copyPng': return this.copyPng(2);
@@ -972,6 +1020,7 @@ class App {
     $('[data-cmd="grid"]')?.classList.toggle('on', ed.showGrid);
     $('[data-cmd="snap"]')?.classList.toggle('on', ed.snap);
     $('[data-cmd="theme"]')?.classList.toggle('on', document.documentElement.dataset.theme === 'dark');
+    document.querySelectorAll('[data-cmd="darkExport"]').forEach((b) => b.classList.toggle('checked', this.darkExport));
     $('#viewport').classList.toggle('connect', ed.mode === 'connect');
     $('#viewport').classList.toggle('pan', ed.mode === 'pan');
     this.status();
@@ -1013,6 +1062,23 @@ class App {
       }
       const k = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;
+      if (k === 'f5') { e.preventDefault(); return this.command('present'); }
+      if (k === 'f11') { e.preventDefault(); return this.command('fullscreen'); }
+      if (this.editor.present) {
+        // view-only: leave, zoom and pan are the only keys that do something
+        e.preventDefault();
+        this.wakePresentBar();
+        const ed = this.editor;
+        if (k === 'escape') return this.setPresenting(false);
+        if (k === '+' || k === '=') return ed.setZoom(ed.zoom * 1.25);
+        if (k === '-') return ed.setZoom(ed.zoom / 1.25);
+        if (k === '0' || k === 'f' || k === 'home') return ed.fit();
+        if (k === '1') return ed.setZoom(1);
+        if (k === 'd') return this.command('theme');
+        const pan = { arrowleft: [80, 0], arrowright: [-80, 0], arrowup: [0, 80], arrowdown: [0, -80] }[k];
+        if (pan) { ed.panX += pan[0]; ed.panY += pan[1]; ed.layout(); }
+        return undefined;
+      }
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
         // document-level shortcuts still work from a panel field; everything else stays with the field
         if (!ctrl || !['n', 'o', 's', 'e', 'p', 'f'].includes(k)) return undefined;
@@ -1074,6 +1140,8 @@ class App {
     window.addEventListener('keyup', (e) => {
       if (e.key === ' ') { this.editor.spaceDown = false; $('#viewport').classList.toggle('pan', this.editor.mode === 'pan'); }
     });
+    window.addEventListener('mousemove', () => { if (this.editor.present) this.wakePresentBar(); });
+    document.querySelectorAll('#presentbar [data-cmd]').forEach((b) => b.addEventListener('click', () => this.command(b.dataset.cmd)));
     $('#inline-edit').addEventListener('blur', () => this.commitInline());
     $('#inline-edit').addEventListener('input', (e) => { e.target.rows = Math.max(1, e.target.value.split('\n').length); });
     document.addEventListener('pointerdown', (e) => {
@@ -1123,6 +1191,7 @@ class App {
       ['Alt+click', 'Select one item inside a group'], ['Shift+drag', 'Move along one axis'], ['Arrows / Shift+arrows', 'Nudge 1 / 10 px'],
       ['Space+drag, middle mouse', 'Pan'], ['Ctrl+wheel', 'Zoom'], ['Ctrl+0 / Ctrl+1', 'Fit / 100%'], ['Ctrl+G / Ctrl+Shift+G', 'Group / ungroup'],
       ['Ctrl+] / Ctrl+[', 'Forward / backward (Shift: front / back)'], ['Ctrl+E / Ctrl+Shift+E', 'Export PNG / SVG'], ['Ctrl+Shift+C', 'Copy as image (for Word)'],
+      ['F5', 'Presentation mode (view-only, for screen sharing); Esc leaves it'], ['F11', 'Full screen'],
       ['G / R', 'Show grid / rulers'], ['Ctrl+L', 'Lock'], ['L', 'Label on the selected line'], ['Ctrl+F', 'Find text'],
       ['Ctrl+P / Ctrl+Shift+P', 'PNG for print (300 dpi) / PDF'], ['Ctrl+N', 'New drawing (paper size or template)'],
     ];

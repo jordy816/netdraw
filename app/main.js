@@ -1,6 +1,6 @@
 // Electron main process: window, native menu, file dialogs, PNG rendering and the command-line exporter.
 //   NetDraw.exe [file.netdraw]
-//   NetDraw.exe --export in.netdraw --out out.png [--scale 2]     (also .svg)
+//   NetDraw.exe --export in.netdraw --out out.png [--scale 2] [--dark]     (also .svg, .pdf)
 const { app, BrowserWindow, Menu, dialog, ipcMain, clipboard, nativeImage, shell, nativeTheme } = require('electron');
 const { ClipboardItem } = require('electron');
 const fs = require('fs');
@@ -99,6 +99,7 @@ async function exportFile(inFile, outFile, scale) {
   const { normalize } = await import(pathToFileURL(path.join(SRC, 'js', 'model.js')).href);
   const doc = normalize(JSON.parse(fs.readFileSync(inFile, 'utf8')));
   let svg = R.renderSVG(doc);
+  if (process.argv.includes('--dark')) svg = R.darkSVG(svg);
   if (/\.pdf$/i.test(outFile)) {
     const k = doc.page.mmPerPx || 0.2;
     fs.writeFileSync(outFile, await renderPdf(svg, doc.page.width * k, doc.page.height * k));
@@ -167,7 +168,7 @@ async function handleAutomation(method, p) {
     const R = await renderer();
     const { normalize } = await import(pathToFileURL(path.join(SRC, 'js', 'model.js')).href);
     const doc = normalize(JSON.parse(snap.result.json));
-    const svg = R.renderSVG(doc);
+    const svg = p.dark ? R.darkSVG(R.renderSVG(doc)) : R.renderSVG(doc);
     const k = doc.page.mmPerPx || 0.2;
     if (method === 'render_preview') {
       const scale = Math.max(0.2, Math.min(2, Number(p.scale) || Math.min(1, 1600 / doc.page.width)));
@@ -260,7 +261,7 @@ function buildMenu() {
         item('Export PNG for screen / Word (2×)…', 'exportPng:2', 'Ctrl+E'), item('Export PNG for print (300 dpi)…', 'exportPng:print', 'Ctrl+P'),
         item('Export PNG (1×)…', 'exportPng:1'), item('Export PDF (vector, paper size)…', 'exportPdf', 'Ctrl+Shift+P'),
         item('Export SVG…', 'exportSvg', 'Ctrl+Shift+E'), item('Export selection as PNG…', 'exportPngSel:2'),
-        item('Copy as image', 'copyPng', 'Ctrl+Shift+C'),
+        item('Copy as image', 'copyPng', 'Ctrl+Shift+C'), item('Export in dark colours (on / off)', 'darkExport'),
         { type: 'separator' },
         { label: 'E&xit', role: 'quit' },
       ],
@@ -298,7 +299,8 @@ function buildMenu() {
       label: '&View',
       submenu: [
         item('Zoom in', 'zoomIn', 'Ctrl+='), item('Zoom out', 'zoomOut', 'Ctrl+-'), item('Fit to window', 'zoomFit', 'Ctrl+0'),
-        item('Actual size', 'zoom100', 'Ctrl+1'), { type: 'separator' }, item('Show grid', 'grid', 'G'), item('Show rulers (mm)', 'rulers', 'R'),
+        item('Actual size', 'zoom100', 'Ctrl+1'), { type: 'separator' },
+        item('Presentation mode', 'present', 'F5'), item('Full screen', 'fullscreen', 'F11'), { type: 'separator' }, item('Show grid', 'grid', 'G'), item('Show rulers (mm)', 'rulers', 'R'),
         item('Snap', 'snap'), { type: 'separator' },
         { label: 'Theme', submenu: [item('System', 'theme:system'), item('Light', 'theme:light'), item('Dark', 'theme:dark')] },
         item('Dark drawing preview (exports stay white)', 'darkPreview'),
@@ -445,6 +447,12 @@ function wireIpc() {
     nativeTheme.themeSource = ['light', 'dark'].includes(t) ? t : 'system';
     win?.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#0B0F17' : '#E9EDF2');
   });
+  ipcMain.on('setPresenting', (_e, on) => {
+    if (!win) return;
+    win.setMenuBarVisibility(!on);
+    if (!on && win.isFullScreen()) win.setFullScreen(false);
+  });
+  ipcMain.on('toggleFullScreen', () => win?.setFullScreen(!win.isFullScreen()));
   ipcMain.on('setUiZoom', (_e, f) => { const z = Number(f); if (z >= 0.5 && z <= 3) win?.webContents.setZoomFactor(z); });
   ipcMain.on('autosave', (_e, data) => {
     try { fs.writeFileSync(AUTOSAVE(), JSON.stringify({ ...data, time: Date.now() })); } catch { /* best effort */ }

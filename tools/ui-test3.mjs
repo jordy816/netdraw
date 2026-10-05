@@ -129,6 +129,45 @@ await win.mouse.move(te.x - 120, te.y + 4, { steps: 5 }); await win.mouse.up();
 const tw = await win.evaluate((id) => window.app.doc.items.find((i) => i.id === id).wrap, tid.id);
 check('side handle sets a wrap width', tw > 0, `wrap ${tw}`);
 
+// 8e. dark export toggle: exports turn dark only when switched on
+const light = await win.evaluate(() => window.app.exportDoc(false).svg.match(/<rect width="[\d.]+" height="[\d.]+" fill="([^"]+)"/)[1]);
+await win.evaluate(() => window.app.command('darkExport'));
+const dark = await win.evaluate(() => ({ bg: window.app.exportDoc(false).svg.match(/<rect width="[\d.]+" height="[\d.]+" fill="([^"]+)"/)[1], model: window.app.doc.page.background, on: window.app.darkExport }));
+check('exports are white by default', light === '#fff', light);
+check('"Export in dark" converts the export, not the drawing', dark.on && dark.bg === '#080808' && dark.model === '#fff', JSON.stringify(dark));
+await win.evaluate(() => window.app.command('darkExport'));
+check('dark export can be switched off again', await win.evaluate(() => !window.app.darkExport));
+
+// 8f. presentation mode: tools hidden, view-only, Esc leaves
+await win.keyboard.press('Escape');
+const beforeDoc = await win.evaluate(() => JSON.stringify(window.app.doc));
+await win.keyboard.press('F5');
+await win.waitForTimeout(300);
+const pres = await win.evaluate(() => ({
+  cls: document.body.classList.contains('present'),
+  toolbar: getComputedStyle(document.querySelector('#toolbar')).display,
+  palette: getComputedStyle(document.querySelector('#palette')).display,
+  props: getComputedStyle(document.querySelector('#props')).display,
+  ruler: getComputedStyle(document.querySelector('#ruler-x')).display,
+  bar: getComputedStyle(document.querySelector('#presentbar')).display,
+  vw: document.querySelector('#viewport').getBoundingClientRect().width, ww: window.innerWidth,
+}));
+check('presentation mode hides the tools', pres.cls && pres.toolbar === 'none' && pres.palette === 'none' && pres.props === 'none' && pres.ruler === 'none' && pres.bar === 'flex', JSON.stringify(pres));
+check('drawing uses the whole window', Math.abs(pres.vw - pres.ww) < 2, `${pres.vw} of ${pres.ww}`);
+await win.screenshot({ path: path.join(outDir, 'ui3-present.png') });
+const pnode = await win.evaluate(() => { const n = window.app.doc.items.find((i) => i.type === 'node'); return window.app.editor.toScreen(n.x, n.y); });
+const pan0 = await win.evaluate(() => window.app.editor.panX);
+await win.mouse.move(pnode.x, pnode.y); await win.mouse.down();
+await win.mouse.move(pnode.x + 80, pnode.y + 40, { steps: 5 }); await win.mouse.up();
+await win.mouse.dblclick(pnode.x + 80, pnode.y + 40);
+await win.keyboard.press('Delete');
+const pstate = await win.evaluate(() => ({ sel: window.app.editor.sel.size, pan: window.app.editor.panX, doc: JSON.stringify(window.app.doc), inline: !document.querySelector('#inline-edit').hidden }));
+check('presentation mode is view-only (drag pans, nothing changes)', pstate.sel === 0 && pstate.pan !== pan0 && pstate.doc === beforeDoc && !pstate.inline, `sel ${pstate.sel}, pan ${pan0} -> ${pstate.pan}`);
+await win.keyboard.press('Escape');
+await win.waitForTimeout(200);
+const back2 = await win.evaluate(() => ({ cls: document.body.classList.contains('present'), toolbar: getComputedStyle(document.querySelector('#toolbar')).display }));
+check('Esc returns to editing', !back2.cls && back2.toolbar !== 'none', JSON.stringify(back2));
+
 // 8d. connect-an-assistant dialog
 await win.evaluate(() => { window.app.command('mcp'); });
 await win.waitForSelector('.modal pre.code');

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.2 — 2026-10-05
+
+- Export in dark colours: a switch in the Export menu. PNG, PDF, SVG and "copy as image" then come out dark, with
+  the same colours as the dark preview; the PDF and SVG stay vector. White remains the default.
+  Command line: `--dark`; MCP: `dark: true` on `export` and `render_preview`.
+- Presentation mode (F5 or the screen button in the toolbar): hides the toolbar, panels, rulers and handles, and
+  shows the drawing in the whole window, view-only, for screen sharing. Drag pans, scrolling zooms, D switches
+  dark/light, F11 goes full screen, Esc returns to editing.
+
 ## 1.2.1 — 2026-10-01
 
 - Vendor icons, kept to the well-known ones:

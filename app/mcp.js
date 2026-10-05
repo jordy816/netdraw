@@ -91,12 +91,12 @@ const TOOLS = [
   {
     name: 'render_preview',
     description: 'Picture of the drawing as PNG, to check the layout: lines crossing labels, text outside containers, overlaps.',
-    inputSchema: { type: 'object', properties: { file: FILE, scale: { type: 'number', description: 'Default fits ~1600 px wide.' } } },
+    inputSchema: { type: 'object', properties: { file: FILE, scale: { type: 'number', description: 'Default fits ~1600 px wide.' }, dark: { type: 'boolean', description: 'Dark colours instead of white.' } } },
   },
   {
     name: 'export',
     description: 'Export to PNG (scale 2 = screen/Word), PDF (vector, paper size) or SVG. The format follows the extension of "out".',
-    inputSchema: { type: 'object', required: ['out'], properties: { file: FILE, out: { type: 'string' }, scale: { type: 'number' } } },
+    inputSchema: { type: 'object', required: ['out'], properties: { file: FILE, out: { type: 'string' }, scale: { type: 'number' }, dark: { type: 'boolean', description: 'Export in dark colours (default white).' } } },
   },
   {
     name: 'save',
@@ -135,13 +135,14 @@ function live(method, params) {
 }
 
 // ------------------------------------------------------------------------------------------------ file mode
-function runExport(file, out, scale) {
+function runExport(file, out, scale, dark = false) {
   return new Promise((resolve, reject) => {
     const env = { ...process.env };
     delete env.ELECTRON_RUN_AS_NODE;
     const args = [];
     if (path.basename(process.env.NETDRAW_ELECTRON || '').toLowerCase().startsWith('electron')) args.push(APP);
     args.push('--export', file, '--out', out, '--scale', String(scale));
+    if (dark) args.push('--dark');
     if (process.platform === 'linux') args.push('--no-sandbox', '--disable-gpu');
     const p = spawn(process.env.NETDRAW_ELECTRON || process.execPath, args, { env, stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true });
     let err = '';
@@ -163,10 +164,10 @@ async function fileCall(method, a) {
   if (!fs.existsSync(file)) throw new Error(`File not found: ${file}`);
   if (method === 'render_preview' || method === 'export') {
     const doc = A.M.normalize(JSON.parse(fs.readFileSync(file, 'utf8')));
-    if (method === 'export') return { written: await runExport(file, path.resolve(a.out), a.scale || 2) };
+    if (method === 'export') return { written: await runExport(file, path.resolve(a.out), a.scale || 2, !!a.dark) };
     const scale = Math.max(0.2, Math.min(2, Number(a.scale) || Math.min(1, 1600 / doc.page.width)));
     const tmp = path.join(os.tmpdir(), `netdraw-preview-${process.pid}-${Date.now()}.png`);
-    await runExport(file, tmp, scale);
+    await runExport(file, tmp, scale, !!a.dark);
     const png = fs.readFileSync(tmp).toString('base64');
     fs.unlinkSync(tmp);
     return { png, width: Math.round(doc.page.width * scale), height: Math.round(doc.page.height * scale) };
