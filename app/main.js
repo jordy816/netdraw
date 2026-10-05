@@ -1,7 +1,7 @@
 // Electron main process: window, native menu, file dialogs, PNG rendering and the command-line exporter.
 //   NetDraw.exe [file.netdraw]
 //   NetDraw.exe --export in.netdraw --out out.png [--scale 2] [--dark]     (also .svg, .pdf)
-const { app, BrowserWindow, Menu, dialog, ipcMain, clipboard, nativeImage, shell, nativeTheme } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, clipboard, nativeImage, shell, nativeTheme, net: enet } = require('electron');
 const { ClipboardItem } = require('electron');
 const fs = require('fs');
 const path = require('path');
@@ -230,6 +230,46 @@ function installClaudeDesktop() {
   return done;
 }
 
+// ------------------------------------------------------------------------------------------------ update check
+// Asks GitHub for the latest release and compares it with this version. Nothing is downloaded or installed, and
+// nothing about you or your drawings is sent. Uses the system's proxy and certificates.
+const RELEASES_PAGE = 'https://github.com/jordy816/netdraw/releases/latest';
+
+function newerVersion(latest, current) {
+  const a = String(latest).replace(/^v/, '').split('.').map((n) => parseInt(n, 10) || 0);
+  const b = String(current).replace(/^v/, '').split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0);
+  }
+  return false;
+}
+
+async function checkForUpdate() {
+  const current = app.getVersion();
+  if (process.env.NETDRAW_FAKE_LATEST) {   // test hook
+    const latest = process.env.NETDRAW_FAKE_LATEST;
+    return { current, latest, newer: newerVersion(latest, current), url: RELEASES_PAGE };
+  }
+  // GitHub redirects /releases/latest to /releases/tag/vX.Y.Z. That web link is not subject to the API's hourly
+  // quota per IP address, which shared networks often exhaust. Only the redirect target is read.
+  try {
+    const target = await new Promise((resolve, reject) => {
+      const req = enet.request({ method: 'HEAD', url: RELEASES_PAGE, redirect: 'manual' });
+      const timer = setTimeout(() => { req.abort(); reject(new Error('timeout')); }, 8000);
+      req.setHeader('User-Agent', `NetDraw/${current}`);
+      req.on('redirect', (_status, _method, redirectUrl) => { clearTimeout(timer); resolve(redirectUrl); req.abort(); });
+      req.on('response', (res) => { clearTimeout(timer); resolve(`status ${res.statusCode}`); });
+      req.on('error', (e) => { clearTimeout(timer); reject(e); });
+      req.end();
+    });
+    const m = /\/releases\/tag\/v?(\d+(?:\.\d+)*)/.exec(target || '');
+    if (!m) return { current, error: /^status/.test(target) ? `GitHub answered ${target.slice(7)}` : 'No release found' };
+    return { current, latest: m[1], newer: newerVersion(m[1], current), url: target };
+  } catch (e) {
+    return { current, error: e.message === 'timeout' ? 'GitHub did not answer in time' : 'GitHub could not be reached' };
+  }
+}
+
 // ------------------------------------------------------------------------------------------------ recent files
 function recent() {
   try { return JSON.parse(fs.readFileSync(RECENT(), 'utf8')).filter((p) => fs.existsSync(p)); } catch { return []; }
@@ -313,6 +353,7 @@ function buildMenu() {
       submenu: [
         item('Keyboard and mouse', 'shortcuts'),
         item('Connect Claude / AI assistant (MCP)…', 'mcp'),
+        item('Check for updates…', 'checkUpdate'),
         {
           label: 'Set up on this PC (Start menu, open .netdraw files)', click: () => {
             try { dialog.showMessageBox(win, { type: 'info', title: 'NetDraw', message: registerFileType() }); } catch (e) { dialog.showErrorBox('NetDraw', String(e.message || e)); }
@@ -440,6 +481,8 @@ function wireIpc() {
   });
   ipcMain.handle('fontBase64', (_e, n) => fontBase64(n));
   ipcMain.handle('mcpInfo', () => mcpInfo());
+  ipcMain.handle('checkUpdate', () => checkForUpdate());
+  ipcMain.on('openReleasePage', (_e, url) => { if (/^https:\/\/github\.com\/jordy816\/netdraw\//.test(String(url))) shell.openExternal(url); });
   ipcMain.handle('mcpInstallDesktop', () => installClaudeDesktop());
   ipcMain.on('copyText', (_e, t) => { const r = clipboard.writeText(t); if (r?.catch) r.catch(() => {}); });
   ipcMain.on('version', (e) => { e.returnValue = app.getVersion(); });

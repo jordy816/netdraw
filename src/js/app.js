@@ -66,11 +66,13 @@ class App {
       if (i === 0) {
         this.loadText(rec.text, rec.path, rec.name);
         this.dirty = true; host.setDirty(true); this.updateTitle();
+        setTimeout(() => this.checkUpdate(false), 4000);
         return;
       }
       host.clearAutosave?.();
     }
     if (p) this.openPath(p, true);
+    setTimeout(() => this.checkUpdate(false), 4000);
   }
 
   // ---------------------------------------------------------------------------------------------- automation (MCP)
@@ -974,6 +976,9 @@ class App {
       case 'edit': { const it = ed.selectedItems()[0]; if (it) this.inlineEdit(it); return null; }
       case 'shortcuts': return this.showShortcuts();
       case 'mcp': return this.showMcp();
+      case 'checkUpdate': return this.checkUpdate(true);
+      case 'openUpdate': return this.update?.url && host.openReleasePage?.(this.update.url);
+      case 'dismissUpdate': if (this.update) store.set('netdraw.updateDismissed', this.update.latest); $('#updatepill').hidden = true; return null;
       case 'about': return this.toast(`NetDraw ${host.version || ''} · drag-and-drop network and architecture diagrams`);
       default: return null;
     }
@@ -1196,6 +1201,34 @@ class App {
       ['Ctrl+P / Ctrl+Shift+P', 'PNG for print (300 dpi) / PDF'], ['Ctrl+N', 'New drawing (paper size or template)'],
     ];
     this.modal('Keyboard and mouse', `<table class="keys">${rows.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join('')}</table>`);
+  }
+
+  // Looks on GitHub for a newer release. Automatic check: at most once a day, silent unless there is news.
+  async checkUpdate(manual = false) {
+    if (!host.checkUpdate) return manual ? this.toast('Only available in the desktop app') : null;
+    const auto = store.get('netdraw.updateCheck', true);
+    if (!manual) {
+      if (!auto || Date.now() - store.get('netdraw.updateCheckedAt', 0) < 20 * 3600 * 1000) return null;
+      store.set('netdraw.updateCheckedAt', Date.now());
+    }
+    const r = await host.checkUpdate();
+    this.update = r && r.newer ? r : null;
+    const pill = $('#updatepill');
+    if (this.update && (manual || store.get('netdraw.updateDismissed', '') !== r.latest)) {
+      pill.querySelector('span').textContent = `Update ${r.latest} available`;
+      pill.hidden = false;
+    } else if (!this.update) pill.hidden = true;
+    if (!manual) return null;
+    const box = `<label class="checkline"><input type="checkbox" id="upd-auto"${auto ? ' checked' : ''}> Check automatically when NetDraw starts (once a day)</label>`;
+    let msg, buttons;
+    if (r.error) { msg = `<p>Could not check: ${esc(r.error)}.</p><p>You have version ${esc(r.current)}.</p>`; buttons = [['Close', true]]; }
+    else if (r.newer) { msg = `<p><b>Version ${esc(r.latest)}</b> is available. You have ${esc(r.current)}.</p><p>NetDraw does not install updates itself: the button opens the download page.</p>`; buttons = [['Open download page', true], ['Later', false]]; }
+    else { msg = `<p>You have the latest version (${esc(r.current)}).</p>`; buttons = [['Close', true]]; }
+    const i = await this.modal('Updates', msg + box, buttons, (wrap) => {
+      wrap.querySelector('#upd-auto').addEventListener('change', (e) => store.set('netdraw.updateCheck', e.target.checked));
+    });
+    if (r.newer && i === 0) host.openReleasePage(r.url);
+    return null;
   }
 
   async showMcp() {

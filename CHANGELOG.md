@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.3 — 2026-10-05
+
+- Update check: once a day at startup NetDraw asks GitHub whether a newer release exists and shows a small
+  "Update available" button in the toolbar that opens the download page. It never downloads or installs anything
+  itself. Help → Check for updates checks on demand and has the switch to turn the automatic check off.
+
 ## 1.2.2 — 2026-10-05
 
 - Export in dark colours: a switch in the Export menu. PNG, PDF, SVG and "copy as image" then come out dark, with

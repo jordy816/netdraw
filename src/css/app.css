@@ -38,6 +38,12 @@ small { color: var(--muted); font-size: 11px; }
 .tb:hover { background: var(--hover); }
 .tb.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-line); }
 .tb.wide { padding: 0 10px; }
+.updatepill { display: inline-flex; align-items: center; height: 28px; margin: 0 4px; border: 1px solid var(--accent-line); background: var(--accent-soft); border-radius: 14px; overflow: hidden; flex: none; }
+.updatepill[hidden] { display: none; }
+.updatepill button { border: 0; background: none; color: var(--accent); cursor: pointer; height: 100%; padding: 0 10px; font-size: 12px; font-weight: 600; }
+.updatepill button.x { padding: 0 8px 0 2px; font-size: 15px; font-weight: 400; }
+.updatepill button:hover { text-decoration: underline; }
+.checkline { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--muted); font-size: 12.5px; }
 .zoomlabel { width: 52px; height: 28px; border: 0; background: none; cursor: pointer; color: var(--ink2); font-variant-numeric: tabular-nums; }
 .zoomlabel:hover { background: var(--hover); border-radius: 6px; }
 
@@ -196,6 +202,7 @@ body.present #toast { bottom: 84px; }
 @media (max-width: 1320px) {
   main { grid-template-columns: 236px minmax(0, 1fr) 272px; }
   .tblabel, .tb.wide span, .docname { display: none; }
+  .updatepill span { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }
   .tb { min-width: 28px; padding: 0 4px; }
   .sep { margin: 0 3px; }
 }

@@ -31,7 +31,7 @@ The builds are not code-signed, so SmartScreen may ask "Run anyway" the first ti
 | **Paper** | A4–A0 portrait/landscape, slide 16:9, and a wide overview size. The print scale is 1 px = 0.2 mm, so you always know what fits on A3. |
 | **Export** | PNG 2× for Word, PNG at 300 dpi for print, a vector PDF at paper size, and SVG with the fonts embedded. *Copy as image* (`Ctrl+Shift+C`) pastes straight into Word. *Export in dark colours* gives the same exports on a dark background. |
 | **Presenting** | Presentation mode (`F5`) hides all tools and shows the drawing view-only in the whole window, for screen sharing. `F11` is full screen, `Esc` goes back to editing. |
-| **Comfort** | Dark mode: the drawing is previewed dark, exports stay white. Autosave and crash recovery, templates, find (`Ctrl+F`), and an adjustable interface size. |
+| **Comfort** | Dark mode: the drawing is previewed dark, exports stay white. Autosave and crash recovery, templates, find (`Ctrl+F`), and an adjustable interface size. A daily update check points you to new releases (it can be switched off; nothing is installed automatically). |
 
 **Help → Keyboard and mouse** has the full list of shortcuts.
 

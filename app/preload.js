@@ -31,6 +31,8 @@ contextBridge.exposeInMainWorld('netdrawHost', {
   listTemplates: () => ipcRenderer.invoke('listTemplates'),
   exportPdf: (o) => ipcRenderer.invoke('exportPdf', o),
   mcpInfo: () => ipcRenderer.invoke('mcpInfo'),
+  checkUpdate: () => ipcRenderer.invoke('checkUpdate'),
+  openReleasePage: (url) => ipcRenderer.send('openReleasePage', url),
   mcpInstallDesktop: () => ipcRenderer.invoke('mcpInstallDesktop'),
   copyText: (t) => ipcRenderer.send('copyText', t),
 });

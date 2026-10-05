@@ -8,7 +8,7 @@ import { _electron as electron } from 'playwright-core';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const outDir = process.argv[2] || '/tmp';
-const env = { ...process.env };
+const env = { ...process.env, NETDRAW_FAKE_LATEST: '9.9.9' };   // update check without the network
 delete env.ELECTRON_RUN_AS_NODE;
 const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'nd-ud-'));
 const results = [];
@@ -32,6 +32,21 @@ check('new drawing is A3 landscape', page.width === 2100 && page.height === 1485
 const hint = await win.locator('#props .hint.paper').textContent();
 check('paper hint shows millimetres', /420 × 297 mm/.test(hint), hint.trim());
 check('rulers are visible', await win.locator('#ruler-x').isVisible());
+
+// 1b. update check: a newer release shows a quiet pill; the dialog offers the download page
+await win.waitForSelector('#updatepill:not([hidden])', { timeout: 10000 }).catch(() => null);
+const pillText = await win.locator('#updatepill span').textContent();
+check('newer release shows the update pill', /Update 9\.9\.9 available/.test(pillText), pillText);
+await win.evaluate(() => { window.app.command('checkUpdate'); });
+await win.waitForSelector('.modal');
+const updText = await win.locator('.modal .body').textContent();
+check('manual check reports both versions', /Version 9\.9\.9 is available/.test(updText) && /does not install updates itself/.test(updText), updText.slice(0, 90));
+await win.locator('.modal #upd-auto').uncheck();
+await win.locator('.modal .btn').last().click();
+check('automatic check can be switched off', await win.evaluate(() => JSON.parse(localStorage.getItem('netdraw.updateCheck')) === false));
+await win.evaluate(() => localStorage.setItem('netdraw.updateCheck', 'true'));
+await win.locator('#updatepill .x').click();
+check('pill can be dismissed for that version', await win.evaluate(() => document.querySelector('#updatepill').hidden && JSON.parse(localStorage.getItem('netdraw.updateDismissed')) === '9.9.9'));
 
 // 2. paper preset A4 portrait
 await win.locator('#props select[data-paper]').selectOption('A4-portrait');
