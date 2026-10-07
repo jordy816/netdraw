@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.0 — 2026-10-07
+
+- Export to Visio (`.vsdx`): Export → Visio drawing. The drawing opens in Microsoft Visio as real, editable shapes:
+  - every icon is a group (disc, symbol, label, badge) that you can move, resize and recolour
+  - containers, notes, text and markers are normal Visio shapes with editable text
+  - lines are glued to the icons they were attached to in NetDraw, so they follow when you move an icon in Visio;
+    arrowheads and line labels are part of the line
+  - the page has the same paper size, so it prints the same
+  - positions, sizes and colours are the same as in the other exports. Text uses Segoe UI (a font every Windows PC
+    has), and dashed lines use Visio's own dash patterns, so those two are close rather than identical.
+  - Microsoft icons and pictures are embedded as images; everything else is vector
+  - the conversion is one-way: keep the `.netdraw` file as the source
+  - checked in Visio 2024 (desktop) and against Microsoft's file-format specification
+- Also on the command line (`--out drawing.vsdx`, optional `--font "IBM Plex Sans"`) and in the MCP `export` tool.
+- PNG, PDF, SVG and "copy as image" are unchanged.
+
 ## 1.2.3 — 2026-10-05
 
 - Update check: once a day at startup NetDraw asks GitHub whether a newer release exists and shows a small

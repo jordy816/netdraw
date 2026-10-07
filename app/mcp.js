@@ -95,7 +95,7 @@ const TOOLS = [
   },
   {
     name: 'export',
-    description: 'Export to PNG (scale 2 = screen/Word), PDF (vector, paper size) or SVG. The format follows the extension of "out".',
+    description: 'Export to PNG (scale 2 = screen/Word), PDF (vector, paper size), SVG, or a Visio drawing (.vsdx: editable Visio shapes, lines stay attached to icons). The format follows the extension of "out".',
     inputSchema: { type: 'object', required: ['out'], properties: { file: FILE, out: { type: 'string' }, scale: { type: 'number' }, dark: { type: 'boolean', description: 'Export in dark colours (default white).' } } },
   },
   {

@@ -2,7 +2,7 @@
 
 A Windows desktop editor for network and architecture diagrams: coloured icon discs, light containers, flow lines
 with arrowheads, numbered steps and a legend. You build a diagram by drag and drop, then export it as a PNG for
-Word, a PDF for print or an SVG.
+Word, a PDF for print, an SVG, or a Visio drawing for people who work in Visio.
 
 It is built for working live, in a meeting: fast to draw, consistent in style, and readable on screen and on A3.
 
@@ -29,11 +29,30 @@ The builds are not code-signed, so SmartScreen may ask "Run anyway" the first ti
 | **Explaining** | Numbered markers, `?` / `!` markers, notes with wrapping text, and a legend built from the line styles you used. |
 | **Layout** | Grid and snapping to other items, align / distribute, groups, lock, z-order, and rulers in millimetres. Corner handles resize icons, text and markers. |
 | **Paper** | A4–A0 portrait/landscape, slide 16:9, and a wide overview size. The print scale is 1 px = 0.2 mm, so you always know what fits on A3. |
-| **Export** | PNG 2× for Word, PNG at 300 dpi for print, a vector PDF at paper size, and SVG with the fonts embedded. *Copy as image* (`Ctrl+Shift+C`) pastes straight into Word. *Export in dark colours* gives the same exports on a dark background. |
+| **Export** | PNG 2× for Word, PNG at 300 dpi for print, a vector PDF at paper size, SVG with the fonts embedded, and a Visio drawing (`.vsdx`) with editable shapes. *Copy as image* (`Ctrl+Shift+C`) pastes straight into Word. *Export in dark colours* gives the same exports on a dark background. |
 | **Presenting** | Presentation mode (`F5`) hides all tools and shows the drawing view-only in the whole window, for screen sharing. `F11` is full screen, `Esc` goes back to editing. |
 | **Comfort** | Dark mode: the drawing is previewed dark, exports stay white. Autosave and crash recovery, templates, find (`Ctrl+F`), and an adjustable interface size. A daily update check points you to new releases (it can be switched off; nothing is installed automatically). |
 
 **Help → Keyboard and mouse** has the full list of shortcuts.
+
+## Visio
+
+**Export → Visio drawing** writes a `.vsdx` file that opens in Microsoft Visio (2013 or newer, and Visio for the web)
+as real shapes, not as a picture:
+
+- An icon is a group: disc, symbol, label and badge. Move it, resize it, recolour it, edit the label.
+- Containers, notes, texts and markers are ordinary shapes with editable text.
+- Lines stay attached to the icons they were attached to in NetDraw. Move an icon in Visio and its lines follow.
+  Arrowheads and line labels belong to the line.
+- The page has the same paper size, so it prints the same.
+
+What differs from the PNG and PDF exports:
+
+- **Text** uses Segoe UI, which every Windows PC has. IBM Plex Sans cannot be embedded in a Visio file; if it is
+  installed on the PCs that open the file, export from the command line with `--font "IBM Plex Sans"`.
+- **Dashed lines** use the nearest built-in Visio dash pattern, so the dash lengths differ slightly.
+- **Pictures and the Microsoft icons** are embedded as images. Everything else is vector.
+- It is one-way. NetDraw does not read Visio files, so keep the `.netdraw` file as the source.
 
 ## AI assistants (MCP)
 
@@ -61,7 +80,7 @@ something like "draw our two branch offices, the firewall and the internet, then
 - `update_items` / `delete_items`: change or remove items.
 - `add_legend`: a legend of the line styles used.
 - `render_preview`: a PNG image of the drawing.
-- `export`: write a PNG, PDF or SVG file.
+- `export`: write a PNG, PDF, SVG or Visio (`.vsdx`) file.
 - `save`: save the drawing open in NetDraw.
 - `open_in_netdraw`: open a file in the NetDraw window.
 
@@ -72,6 +91,7 @@ NetDraw.exe drawing.netdraw                                     open a file
 NetDraw.exe --export drawing.netdraw --out drawing.png --scale 2   (add --dark for dark colours)
 NetDraw.exe --export drawing.netdraw --out drawing.pdf          vector, at paper size
 NetDraw.exe --export drawing.netdraw --out drawing.svg
+NetDraw.exe --export drawing.netdraw --out drawing.vsdx         Visio drawing (add --font "IBM Plex Sans" to keep that font)
 NetDraw.exe --setup                                             Start-menu shortcut + .netdraw association
 NetDraw.exe --mcp                                               MCP server on stdio (for AI assistants)
 ```
@@ -140,6 +160,8 @@ to a release.
 - `src/js/path.js`: path maths and routing.
 - `src/js/model.js`: document operations.
 - `src/js/textmetrics.js` + `metrics.js`: font metrics for wrapping and legends.
+- `src/js/vsdx.js` + `app/zip.js`: the Visio export. It reads the shapes back from the renderer's SVG, so it follows
+  the drawing automatically; `tools/vsdx-build.mjs` builds a `.vsdx` without Electron for tests.
 
 ## Licence
 

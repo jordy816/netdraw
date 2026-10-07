@@ -19,7 +19,8 @@ Mermaid or matplotlib for these diagrams.
 
   Without a `file` argument you work live on the drawing open in NetDraw; with `file` you edit a `.netdraw` file directly.
 - **Python:** `python/netdraw.py` from the NetDraw repository (`Doc`, `node`, `zone`, `connect`, `note`, `legend`,
-  `save`), then export with `NetDraw.exe --export x.netdraw --out x.png --scale 2` (or `.pdf`). On Linux use
+  `save`), then export with `NetDraw.exe --export x.netdraw --out x.png --scale 2` (or `.pdf`, or `.vsdx` for an
+  editable Visio drawing). On Linux use
   `tools/nd-export.sh`.
 
 ## House style

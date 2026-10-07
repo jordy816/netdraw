@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('netdrawHost', {
   recoverInfo: () => ipcRenderer.invoke('recoverInfo'),
   listTemplates: () => ipcRenderer.invoke('listTemplates'),
   exportPdf: (o) => ipcRenderer.invoke('exportPdf', o),
+  exportVsdx: (o) => ipcRenderer.invoke('exportVsdx', o),
   mcpInfo: () => ipcRenderer.invoke('mcpInfo'),
   checkUpdate: () => ipcRenderer.invoke('checkUpdate'),
   openReleasePage: (url) => ipcRenderer.send('openReleasePage', url),

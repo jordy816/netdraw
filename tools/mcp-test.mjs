@@ -79,6 +79,9 @@ fs.writeFileSync(path.join(outDir, 'mcp-file-preview.png'), Buffer.from(prev.ima
 const pdf = path.join(outDir, 'mcp-file.pdf');
 const ex = await tool('export', { file, out: pdf });
 check('export to PDF', !ex.err && fs.existsSync(pdf) && fs.statSync(pdf).size > 5000, ex.data?.written);
+const vsdx = pdf.replace(/\.pdf$/, '.vsdx');
+const exv = await tool('export', { file, out: vsdx });
+check('export to Visio (.vsdx)', !exv.err && fs.existsSync(vsdx) && fs.readFileSync(vsdx).subarray(0, 2).toString() === 'PK' && fs.statSync(vsdx).size > 3000, exv.data?.written);
 
 // ---- live mode
 const off = await tool('get_drawing', {});
@@ -103,6 +106,9 @@ fs.writeFileSync(path.join(outDir, 'mcp-live-preview.png'), Buffer.from(lp.image
 const saveTo = path.join(outDir, 'mcp-live.netdraw');
 const sv = await tool('save', { path: saveTo });
 check('live save writes the file', !sv.err && fs.existsSync(saveTo), sv.data?.saved);
+const liveVsdx = path.join(outDir, 'mcp-live.vsdx');
+const lv = await tool('export', { out: liveVsdx });
+check('live export to Visio (.vsdx)', !lv.err && fs.existsSync(liveVsdx) && fs.readFileSync(liveVsdx).subarray(0, 2).toString() === 'PK', lv.data?.written);
 await win.screenshot({ path: path.join(outDir, 'mcp-live-window.png') });
 
 check('nothing but JSON-RPC on stdout', true);

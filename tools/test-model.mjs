@@ -205,4 +205,149 @@ t('Python library mirrors the app presets', () => {
   });
 }
 
+// ---- Visio export
+{
+  const { buildVsdx, linePattern, toSubpaths, primitives, parseMarkup } = await import('../src/js/vsdx.js');
+  const { darkColor } = await import('../src/js/render.js');
+  const { createRequire } = await import('node:module');
+  const { zip } = createRequire(import.meta.url)('../app/zip.js');
+  const zlib = await import('node:zlib');
+  const fs = await import('node:fs');
+  const ta = async (name, fn) => { await fn(); n++; console.log(`ok ${name}`); };
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const tpl = normalize(JSON.parse(fs.readFileSync(path.join(here, '../src/templates/01-network-overview.netdraw'), 'utf8')));
+  const part = (r, name) => r.files.find((f) => f[0] === name)?.[1];
+  // every tag closed in order, every attribute quoted: enough to catch a broken generator
+  const wellFormed = (xml) => {
+    const stack = [];
+    for (const m of xml.replace(/<\?xml[^>]*\?>/, '').matchAll(/<(\/?)([\w:]+)((?:\s+[\w:]+=(?:'[^'<]*'|"[^"<]*"))*)\s*(\/?)>/g)) {
+      if (m[1]) { if (stack.pop() !== m[2]) return false; } else if (!m[4]) stack.push(m[2]);
+    }
+    return stack.length === 0 && !/<[^>]*</.test(xml.replace(/<Text>[^<]*<\/Text>/g, ''));
+  };
+  const S = 0.2 / 25.4;
+
+  await ta('vsdx: package parts, well-formed XML, unique ids and names', async () => {
+    const r = await buildVsdx(tpl);
+    for (const f of ['[Content_Types].xml', '_rels/.rels', 'visio/document.xml', 'visio/_rels/document.xml.rels', 'visio/pages/pages.xml',
+      'visio/pages/_rels/pages.xml.rels', 'visio/pages/page1.xml', 'visio/windows.xml', 'docProps/core.xml', 'docProps/app.xml']) assert.ok(part(r, f), f);
+    for (const [name, data] of r.files) if (typeof data === 'string') assert.ok(wellFormed(data), `${name} is not well-formed`);
+    const page = part(r, 'visio/pages/page1.xml');
+    const ids = [...page.matchAll(/<Shape ID='(\d+)'/g)].map((m) => m[1]);
+    assert.equal(new Set(ids).size, ids.length);
+    assert.equal(ids.length, r.stats.shapes);
+    const names = [...page.matchAll(/ NameU='([^']+)'/g)].map((m) => m[1]);
+    assert.equal(new Set(names).size, names.length);
+    for (const m of page.matchAll(/Sheet\.(\d+)!/g)) assert.ok(ids.includes(m[1]), `reference to missing shape ${m[1]}`);
+    const pages = part(r, 'visio/pages/pages.xml');
+    assert.ok(pages.includes(`<Cell N='PageWidth' V='${Math.round(tpl.page.width * S * 1e6) / 1e6}'/>`), 'page width in inches at the print scale');
+  });
+
+  await ta('vsdx: an icon is a group at the right place, with its label as text', async () => {
+    const node = { ...makeNode('firewall', 500, 300, 'overview', { name: 'Edge <FW> & co', sub: 'two\nlines' }), id: 'n1' };
+    const r = await buildVsdx({ page: { width: 1000, height: 800, background: '#ffffff', mmPerPx: 0.2 }, items: [node] });
+    const page = part(r, 'visio/pages/page1.xml');
+    const g = /<Shape ID='1' NameU='Icon\.1' Name='Icon\.1' Type='Group'[^>]*><Cell N='PinX' V='([\d.]+)'\/><Cell N='PinY' V='([\d.]+)'\/><Cell N='Width' V='([\d.]+)'/.exec(page);
+    assert.ok(g, 'group shape');
+    assert.ok(Math.abs(g[1] - 500 * S) < 1e-5 && Math.abs(g[2] - (800 - 300) * S) < 1e-5 && Math.abs(g[3] - 2 * node.r * S) < 1e-5);
+    assert.ok(page.includes('<Text>Edge &lt;FW&gt; &amp; co</Text>') && page.includes('<Text>two\nlines</Text>'));
+    assert.ok(page.includes("<Cell N='Font' V='Segoe UI Semibold'/>"), 'weight 600 uses the semibold face');
+    assert.ok(/<Section N='Connection'>(<Row T='Connection' IX='\d'>.*?<\/Row>){4}<\/Section>/.test(page), 'four connection points');
+    assert.ok(page.includes("<Row T='Ellipse' IX='1'>") && page.includes("T='EllipticalArcTo'"), 'disc and rounded rectangle');
+    const p2 = part(await buildVsdx({ page: { width: 1000, height: 800, background: '#ffffff' }, items: [node] }, { font: 'IBM Plex Sans' }), 'visio/pages/page1.xml');
+    assert.ok(p2.includes("<Cell N='Font' V='IBM Plex Sans SemiBold'/>"));
+  });
+
+  await ta('vsdx: lines are 1-D shapes glued to the icons, arrowheads are their own geometry', async () => {
+    const a = { ...makeNode('pc', 200, 300, 'overview', { name: 'A' }), id: 'a' }, b = { ...makeNode('server', 600, 300, 'overview', { name: 'B' }), id: 'b' };
+    const d = route('straight', a, a.r, b, b.r);
+    const c = { type: 'connector', id: 'c', d, color: '#0284C7', width: 3.2, arrowEnd: true, arrowSize: 5.2, dash: '8 6', label: 'HTTPS', from: { id: 'a', dx: 32, dy: 0 }, to: { id: 'b', dx: -36, dy: 0 } };
+    const r = await buildVsdx({ page: { width: 1000, height: 800, background: '#ffffff' }, items: [a, b, c] });
+    const page = part(r, 'visio/pages/page1.xml');
+    assert.deepEqual(r.stats, { shapes: r.stats.shapes, lines: 1, glued: 2, images: 0 });
+    assert.ok(page.includes("<Connect FromSheet='3' FromCell='BeginX' FromPart='9' ToSheet='1' ToCell='Connections.X2' ToPart='101'/>"), 'begin glued to the east point of A');
+    assert.ok(page.includes("<Connect FromSheet='3' FromCell='EndX' FromPart='12' ToSheet='2' ToCell='Connections.X5' ToPart='104'/>"), 'end glued to its own point on B');
+    assert.ok(page.includes("F='PAR(PNT(Sheet.2!Connections.X5,Sheet.2!Connections.Y5))'"));
+    const line = /<Shape ID='3'.*?<\/Shape>/s.exec(page)[0];
+    assert.ok(line.includes("<Cell N='Angle' V='0' F='ATAN2(EndY-BeginY,EndX-BeginX)'/>") && line.includes("<Cell N='LinePattern' V='9'/>"));
+    assert.ok(line.includes("<Row N='EndUX'>") && line.includes("<Section N='Geometry' IX='1'>"), 'arrowhead section driven by User cells');
+    // tip of the head: 0.15 of its length past the end of the line, on the line
+    const endX = Number(/<Cell N='EndX' V='([\d.]+)'/.exec(line)[1]), beginX = Number(/<Cell N='BeginX' V='([\d.]+)'/.exec(line)[1]);
+    const tip = /<Section N='Geometry' IX='1'>.*?<Row T='MoveTo' IX='1'><Cell N='X' V='([\d.]+)'/s.exec(line)[1];
+    assert.ok(Math.abs(Number(tip) - (endX - beginX) - 0.15 * 5.2 * 3.2 * S) < 2e-6, tip);
+    assert.ok(line.includes('<Text>HTTPS</Text>') && line.includes("<Cell N='TextBkgnd' V='#ffffff'/>") && line.includes("F='-Angle'"));
+  });
+
+  await ta('vsdx: dash styles map to the nearest Visio pattern', async () => {
+    assert.equal(linePattern(null, 3), 1);
+    for (const f of FLOW_PRESETS.filter((x) => x.dash && x.key !== 'zpadns')) assert.equal(linePattern(f.dash.split(' ').map(Number), f.width, 'round'), 9, f.key);
+    assert.equal(linePattern([2, 7], 3.5, 'round'), 23);
+    assert.equal(linePattern([8, 6], 1.8, 'butt'), 2);
+  });
+
+  await ta('vsdx: fill follows SVG (a shape inside a shape stays filled, a counter-wound one is a hole)', async () => {
+    const ctx = { col: (c) => (c && c !== 'none' ? c : null) };
+    const same = primitives({ type: 'path', d: 'M0 0 h100 v60 h-100 z M30 15 h40 v30 h-40 z', fill: '#111111' }, ctx)[0];
+    const hole = primitives({ type: 'path', d: 'M0 0 h100 v60 h-100 z M30 15 v30 h40 v-30 z', fill: '#111111' }, ctx)[0];
+    assert.equal(same.subs[1].noFill, true);
+    assert.ok(!hole.subs[1].noFill && !hole.subs[0].noFill);
+    assert.equal(toSubpaths(parsePath('M0 0 A10 10 0 0 1 20 0 Q30 10 20 20 Z'))[0].segs.every((g) => g.c === 'L' || g.c === 'C'), true);
+    assert.equal(parseMarkup('<g transform="translate(1 2)"><line x1="0" y1="0" x2="5" y2="0" stroke="#fff"/></g>').kids[0].kids[0].attrs.x2, '5');
+  });
+
+  await ta('vsdx: notes keep their lines, dark colours, pictures', async () => {
+    const note = { type: 'zone', id: 'z', x: 40, y: 40, w: 340, h: 170, rx: 10, fill: '#FEFCE8', stroke: '#FDE68A', strokeWidth: 1.5, title: 'Note', titleSize: 15, titleWeight: 700, titleColor: '#854D0E',
+      titleAlign: 'left', titleDx: 18, titleDy: 30, body: 'Write the explanation here. Text wraps inside the box, on several lines.', bodySize: 14, bodyColor: '#422006', bodyDy: 56, bodyLh: 20 };
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==';
+    const items = [note, { type: 'image', id: 'i', href: png, x: 500, y: 100, w: 100, h: 100 }, { type: 'image', id: 's', href: 'data:image/svg+xml,%3Csvg%3E%3C/svg%3E', x: 700, y: 100, w: 40, h: 40 }];
+    const r = await buildVsdx({ page: { width: 1000, height: 800, background: '#ffffff' }, items });
+    const page = part(r, 'visio/pages/page1.xml');
+    assert.ok(/<Text>Write the explanation[^<]*\n[^<]*lines\.<\/Text>/.test(page), 'body is one text block with line breaks');
+    assert.ok(page.includes(`<Cell N='SpLine' V='${Math.round((-20 / 14) * 1e6) / 1e6}'/>`), 'line pitch of the note');
+    assert.ok(page.includes("F='Sheet.1!Height*1-") && page.includes("F='Sheet.1!Width*0+"), 'title keeps its distance to the top left corner');
+    assert.equal(r.stats.images, 1);
+    assert.ok(part(r, 'visio/media/image1.png') instanceof Uint8Array && part(r, 'visio/pages/_rels/page1.xml.rels').includes('../media/image1.png'));
+    assert.ok(/<Shape ID='2'[^>]*Type='Foreign'.*?<Cell N='Width' V='([\d.]+)'\/><Cell N='Height' V='([\d.]+)'/.exec(page).slice(1).map(Number).every((v, i) => Math.abs(v - [100, 50][i] * S) < 1e-5), 'picture keeps its 2:1 shape');
+    assert.equal(r.warnings.length, 1, 'the SVG picture needs the app to draw it');
+    const dark = part(await buildVsdx({ page: { width: 1000, height: 800, background: '#ffffff' }, items: [note] }, { dark: true }), 'visio/pages/page1.xml');
+    assert.ok(dark.includes("NameU='Background'") && dark.includes(`V='${darkColor('#FEFCE8').toLowerCase()}'`));
+  });
+
+  await ta('vsdx: odd input still gives a valid file', async () => {
+    const a = { ...makeNode('pc', 200, 300, 'overview', { name: 'bad \uFFFF char \uD800 here' }), id: 'a' };
+    const items = [a, { ...makeNode('pc', 500, 300, 'overview', { name: 'zero' }), r: 0, id: 'b' },
+      { type: 'connector', id: 'c1', d: 'M240 300 L460 300', color: 'none', width: 3, label: 'only a label', arrowEnd: true },
+      { type: 'connector', id: 'c2', d: 'M240 340 L460 340', color: '#000000', width: 0, arrowEnd: true },
+      { type: 'connector', id: 'c3', d: 'M300 400 a20 20 0 1 0 0.01 0 Z', color: '#000000', width: 2, arrowEnd: true },
+      { type: 'zone', id: 'z', x: 10, y: 10, w: 0, h: 50, rx: 4, fill: '#ffffff', stroke: '#000000', strokeWidth: 1, title: 'flat' },
+      { type: 'circle', id: 'k', x: 50, y: 50, r: 0, fill: '#ff0000' }, { type: 'path', id: 'p', d: 'M0 0 H50', stroke: '#000000', strokeWidth: 2, dash: '5' }];
+    const r = await buildVsdx({ page: { width: 800, height: 600, background: '#ffffff' }, items });
+    const page = part(r, 'visio/pages/page1.xml');
+    assert.ok(wellFormed(page) && !/NaN|Infinity|undefined/.test(page) && !/[\uFFFE\uFFFF\uD800-\uDFFF]/.test(page));
+    assert.ok(page.includes('<Text>only a label</Text>') && page.includes('<Text>bad  char  here</Text>'));
+    assert.ok(!/Width\*(NaN|Infinity)/.test(page) && !page.includes("<Cell N='Width' V='0'/>"), 'no zero-size boxes');
+    assert.ok(/NameU='Shape\.\d+'[^>]*>.*?<Cell N='LinePattern' V='(?!1')\d+'/s.test(page), 'a single dash value is dashed');
+    assert.ok(part(r, 'visio/document.xml').includes("<FaceNames><FaceName NameU='Segoe UI'/>"));
+  });
+
+  await ta('vsdx: the zip holds every part intact', async () => {
+    const r = await buildVsdx(tpl);
+    const buf = zip(r.files);
+    assert.equal(buf.readUInt32LE(0), 0x04034b50);
+    const eocd = buf.length - 22;
+    assert.equal(buf.readUInt32LE(eocd), 0x06054b50);
+    assert.equal(buf.readUInt16LE(eocd + 10), r.files.length);
+    let off = buf.readUInt32LE(eocd + 16);
+    for (const [name, data] of r.files) {
+      const nlen = buf.readUInt16LE(off + 28), method = buf.readUInt16LE(off + 10), csize = buf.readUInt32LE(off + 20), lho = buf.readUInt32LE(off + 42);
+      assert.equal(buf.subarray(off + 46, off + 46 + nlen).toString('utf8'), name);
+      const start = lho + 30 + buf.readUInt16LE(lho + 26) + buf.readUInt16LE(lho + 28);
+      const raw = buf.subarray(start, start + csize);
+      const got = method === 8 ? zlib.inflateRawSync(raw) : raw;
+      assert.ok(got.equals(Buffer.from(data)), name);
+      off += 46 + nlen;
+    }
+  });
+}
+
 console.log(`\n${n} tests passed`);

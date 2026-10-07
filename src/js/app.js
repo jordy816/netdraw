@@ -338,6 +338,18 @@ class App {
     } catch (e) { this.toast(`PDF export failed: ${e.message}`, true); }
   }
 
+  // Visio drawing: real, editable Visio shapes (built in the main process). The other exports are unchanged.
+  async exportVsdx() {
+    if (!host.exportVsdx) return this.toast('The Visio export needs the desktop app.', true);
+    try {
+      const r = await host.exportVsdx({ json: JSON.stringify(this.doc), dark: this.darkExport, suggestedName: this.suggested('vsdx') });
+      if (!r) return null;
+      const warn = r.warnings && r.warnings.length ? ` ${r.warnings.join(' ')}` : '';
+      this.toast(`Exported ${r.path.split(/[\\/]/).pop()} for Visio (${r.stats.shapes} shapes, ${r.stats.glued} line ends attached${this.darkExport ? ', dark' : ''}).${warn}`, !!warn);
+      return r.path;
+    } catch (e) { return this.toast(`Visio export failed: ${e.message}`, true); }
+  }
+
   // Legend for every line style used in the drawing, placed under the content.
   insertLegend() {
     const custom = this.palette.customFlows();
@@ -897,6 +909,7 @@ class App {
       case 'exportSvg': return this.exportSvg(a === 'sel');
       case 'exportPng': return this.exportPng(a === 'print' ? 'print' : Number(a) || 2);
       case 'exportPdf': return this.exportPdf();
+      case 'exportVsdx': return this.exportVsdx();
       case 'legend': return this.insertLegend();
       case 'image': return this.createFromSpec({ kind: 'image' }, this.snapPt(this.viewCenter()));
       case 'find': return this.find();

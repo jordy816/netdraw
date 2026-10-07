@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Export a .netdraw to PNG / SVG / PDF without a screen (Linux, via xvfb).
-#   tools/nd-export.sh drawing.netdraw [out.png|out.svg|out.pdf] [scale] [dark]
+# Export a .netdraw to PNG / SVG / PDF / Visio without a screen (Linux, via xvfb).
+#   tools/nd-export.sh drawing.netdraw [out.png|out.svg|out.pdf|out.vsdx] [scale] [dark]
 # scale applies to PNG (2 = screen/Word, 2.362 = 300 dpi at the print scale).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

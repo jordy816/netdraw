@@ -1,6 +1,6 @@
 // Electron main process: window, native menu, file dialogs, PNG rendering and the command-line exporter.
 //   NetDraw.exe [file.netdraw]
-//   NetDraw.exe --export in.netdraw --out out.png [--scale 2] [--dark]     (also .svg, .pdf)
+//   NetDraw.exe --export in.netdraw --out out.png [--scale 2] [--dark]     (also .svg, .pdf, .vsdx)
 const { app, BrowserWindow, Menu, dialog, ipcMain, clipboard, nativeImage, shell, nativeTheme, net: enet } = require('electron');
 const { ClipboardItem } = require('electron');
 const fs = require('fs');
@@ -10,6 +10,7 @@ const net = require('net');
 const os = require('os');
 const { spawn } = require('child_process');
 const { pipePath, onLines } = require('./pipe');
+const { zip } = require('./zip');
 
 const SRC = path.join(__dirname, '..', 'src');
 const RECENT = () => path.join(app.getPath('userData'), 'recent.json');
@@ -88,6 +89,41 @@ async function renderPdf(svg, wmm, hmm) {
   }
 }
 
+// Visio drawing. Pictures inside the drawing that are not PNG or JPEG (the Microsoft icons are SVG) are drawn
+// once in an offscreen window; everything else becomes Visio shapes without a browser.
+async function renderVsdx(doc, { dark = false, font } = {}) {
+  const { buildVsdx } = await import(pathToFileURL(path.join(SRC, 'js', 'vsdx.js')).href);
+  let w = null, dbg = null;
+  const rasterize = async (href, width, height, scale, bg) => {
+    const W = Math.max(1, Math.ceil(width)), H = Math.max(1, Math.ceil(height));
+    if (!w) {
+      w = new BrowserWindow({
+        show: false, width: W, height: H, useContentSize: true, frame: false, transparent: true, enableLargerThanScreen: true,
+        webPreferences: { sandbox: true, backgroundThrottling: false, offscreen: true },
+      });
+      await w.loadFile(path.join(SRC, 'export.html'));
+      dbg = w.webContents.debugger;
+      dbg.attach('1.3');
+    }
+    await dbg.sendCommand('Emulation.setDefaultBackgroundColorOverride', { color: { r: 0, g: 0, b: 0, a: 0 } });
+    await dbg.sendCommand('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: scale, mobile: false });
+    await w.webContents.executeJavaScript(
+      `document.documentElement.style.background = document.body.style.background = ${JSON.stringify(bg || 'transparent')};` +
+      'new Promise((done) => { const im = new Image(); im.onload = im.onerror = () => requestAnimationFrame(() => requestAnimationFrame(() => done(true)));' +
+      `im.style.cssText = 'display:block;width:${W}px;height:${H}px;object-fit:contain'; im.src = ${JSON.stringify(href)}; document.getElementById('c').replaceChildren(im); })`);
+    const { data } = await dbg.sendCommand('Page.captureScreenshot', {
+      format: 'png', captureBeyondViewport: true, fromSurface: true, clip: { x: 0, y: 0, width: W, height: H, scale: 1 },
+    });
+    return Buffer.from(data, 'base64');
+  };
+  try {
+    const r = await buildVsdx(doc, { dark, font: font || undefined, rasterize });
+    return { data: zip(r.files), warnings: r.warnings, stats: r.stats };
+  } finally {
+    if (w) { try { dbg.detach(); } catch { /* closed */ } w.destroy(); }
+  }
+}
+
 async function fontBase64(name) {
   return fs.readFileSync(path.join(SRC, 'fonts', `IBMPlexSans-${name}.ttf`)).toString('base64');
 }
@@ -98,6 +134,12 @@ async function exportFile(inFile, outFile, scale) {
   dbgLog('renderer imported');
   const { normalize } = await import(pathToFileURL(path.join(SRC, 'js', 'model.js')).href);
   const doc = normalize(JSON.parse(fs.readFileSync(inFile, 'utf8')));
+  if (/\.vsdx$/i.test(outFile)) {
+    const r = await renderVsdx(doc, { dark: process.argv.includes('--dark'), font: argValue(process.argv, '--font') });
+    fs.writeFileSync(outFile, r.data);
+    for (const wn of r.warnings) process.stderr.write(`warning: ${wn}\n`);
+    return;
+  }
   let svg = R.renderSVG(doc);
   if (process.argv.includes('--dark')) svg = R.darkSVG(svg);
   if (/\.pdf$/i.test(outFile)) {
@@ -176,7 +218,8 @@ async function handleAutomation(method, p) {
     }
     const out = path.resolve(p.out || '');
     if (!p.out) return { error: '"out" (target file) is required' };
-    if (/\.pdf$/i.test(out)) fs.writeFileSync(out, await renderPdf(svg, doc.page.width * k, doc.page.height * k));
+    if (/\.vsdx$/i.test(out)) fs.writeFileSync(out, (await renderVsdx(doc, { dark: !!p.dark, font: p.font })).data);
+    else if (/\.pdf$/i.test(out)) fs.writeFileSync(out, await renderPdf(svg, doc.page.width * k, doc.page.height * k));
     else if (/\.svg$/i.test(out)) {
       const faces = {};
       for (const n of ['Regular', 'Medium', 'SemiBold', 'Bold']) faces[n] = await fontBase64(n);
@@ -300,7 +343,7 @@ function buildMenu() {
         { type: 'separator' },
         item('Export PNG for screen / Word (2×)…', 'exportPng:2', 'Ctrl+E'), item('Export PNG for print (300 dpi)…', 'exportPng:print', 'Ctrl+P'),
         item('Export PNG (1×)…', 'exportPng:1'), item('Export PDF (vector, paper size)…', 'exportPdf', 'Ctrl+Shift+P'),
-        item('Export SVG…', 'exportSvg', 'Ctrl+Shift+E'), item('Export selection as PNG…', 'exportPngSel:2'),
+        item('Export SVG…', 'exportSvg', 'Ctrl+Shift+E'), item('Export Visio drawing (.vsdx)…', 'exportVsdx'), item('Export selection as PNG…', 'exportPngSel:2'),
         item('Copy as image', 'copyPng', 'Ctrl+Shift+C'), item('Export in dark colours (on / off)', 'darkExport'),
         { type: 'separator' },
         { label: 'E&xit', role: 'quit' },
@@ -517,6 +560,14 @@ function wireIpc() {
         return { name, text };
       });
     } catch { return []; }
+  });
+  ipcMain.handle('exportVsdx', async (_e, { json, dark, suggestedName }) => {
+    const r = await dialog.showSaveDialog(win, { defaultPath: suggestedName, filters: [{ name: 'Visio drawing', extensions: ['vsdx'] }] });
+    if (r.canceled || !r.filePath) return null;
+    const { normalize } = await import(pathToFileURL(path.join(SRC, 'js', 'model.js')).href);
+    const out = await renderVsdx(normalize(JSON.parse(json)), { dark: !!dark });
+    fs.writeFileSync(r.filePath, out.data);
+    return { path: r.filePath, warnings: out.warnings, stats: out.stats };
   });
   ipcMain.handle('exportPdf', async (_e, { svg, wmm, hmm, suggestedName }) => {
     const r = await dialog.showSaveDialog(win, { defaultPath: suggestedName, filters: [{ name: 'PDF document', extensions: ['pdf'] }] });

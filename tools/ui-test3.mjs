@@ -191,6 +191,16 @@ check('MCP dialog shows the Claude Code command', /claude mcp add .*netdraw.*--m
 await win.screenshot({ path: path.join(outDir, 'ui3-mcp.png') });
 await win.locator('.modal .btn.primary').last().click();
 
+// 8e. Visio export from the Export menu (the save dialog is answered for the test)
+const vsdxOut = path.join(outDir, 'ui3-export.vsdx');
+fs.rmSync(vsdxOut, { force: true });
+await app.evaluate(({ dialog }, target) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath: target }); }, vsdxOut);
+check('Export menu offers a Visio drawing', await win.locator('#m-export [data-cmd="exportVsdx"]').count() === 1);
+const vsdxPath = await win.evaluate(() => window.app.command('exportVsdx'));
+const vsdxToast = await win.locator('#toast').textContent();
+check('Visio export writes a .vsdx', vsdxPath === vsdxOut && fs.existsSync(vsdxOut) && fs.readFileSync(vsdxOut).subarray(0, 2).toString() === 'PK', vsdxToast);
+check('Visio export reports shapes and attached lines', /for Visio \(\d+ shapes, \d+ line ends attached\)/.test(vsdxToast), vsdxToast);
+
 // 9. autosave + recovery after a crash-like exit
 await win.evaluate(() => { window.app.markDirty(); window.app.autosave(); });
 await win.waitForTimeout(300);
