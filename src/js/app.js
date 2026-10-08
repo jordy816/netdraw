@@ -927,18 +927,18 @@ class App {
         const on = !store.get('netdraw.darkPreview', true);
         store.set('netdraw.darkPreview', on);
         this.applyTheme(this.theme);
-        return this.toast(on ? 'Dark drawing preview on (exports stay white)' : 'Drawing shown as it exports');
+        return this.toast(on ? 'Drawing is shown dark in dark theme (exports stay white)' : 'Drawing is shown as it exports');
       }
       case 'rulers': ed.showRulers = !ed.showRulers; store.set('netdraw.rulers', ed.showRulers); ed.fit(); return this.syncToolbar();
       case 'darkExport': {
         const on = !this.darkExport;
         store.set('netdraw.darkExport', on);
         this.syncToolbar();
-        return this.toast(on ? 'Exports are now dark (PNG, PDF, SVG, copy as image)' : 'Exports are white again');
+        return this.toast(on ? 'Exports are dark now (PNG, PDF, SVG, Visio, copy as image)' : 'Exports are white again');
       }
       case 'present': return this.setPresenting(!ed.present);
       case 'fullscreen': return host.toggleFullScreen?.();
-      case 'uiZoom': { const f = Number(a) || 1; store.set('netdraw.uiZoom', f); host.setUiZoom?.(f); return setTimeout(() => ed.layout(), 50); }
+      case 'uiZoom': { const f = Number(a) || 1; store.set('netdraw.uiZoom', f); host.setUiZoom?.(f); this.syncMenu(); return setTimeout(() => ed.layout(), 50); }
       case 'exportPngSel': return this.exportPng(Number(a) || 2, true);
       case 'copyPng': return this.copyPng(2);
       case 'undo': return this.undo();
@@ -1042,6 +1042,16 @@ class App {
     $('#viewport').classList.toggle('connect', ed.mode === 'connect');
     $('#viewport').classList.toggle('pan', ed.mode === 'pan');
     this.status();
+    this.syncMenu();
+  }
+
+  // The menu bar shows the on/off settings with a check mark; tell it what they are now.
+  syncMenu() {
+    const ed = this.editor;
+    host.setMenuState?.({
+      darkExport: !!this.darkExport, grid: !!ed.showGrid, rulers: !!ed.showRulers, snap: !!ed.snap,
+      darkPreview: !!store.get('netdraw.darkPreview', true), theme: this.theme || 'system', uiZoom: Number(store.get('netdraw.uiZoom', 1)) || 1,
+    });
   }
 
   onView() {
@@ -1173,16 +1183,17 @@ class App {
     const one = sel.length === 1 ? sel[0] : null;
     const items = [];
     const add = (cmd, label, key = '') => items.push(`<button data-cmd="${cmd}"><span>${label}</span><kbd>${key}</kbd></button>`);
+    const tick = (cmd, label, on, key = '') => items.push(`<button data-cmd="${cmd}" class="checkable${on ? ' checked' : ''}"><span>${label}</span><span><span class="tick">✓</span> <kbd>${key}</kbd></span></button>`);
     const sep = () => items.push('<hr>');
     if (it) {
       if (one && ['text', 'node', 'zone', 'badge'].includes(one.type)) { add('edit', 'Edit text', 'F2'); sep(); }
       add('cut', 'Cut', 'Ctrl+X'); add('copy', 'Copy', 'Ctrl+C'); add('paste', 'Paste', 'Ctrl+V'); add('duplicate', 'Duplicate', 'Ctrl+D');
-      add('copyPng', 'Copy selection as image', 'Ctrl+Shift+C'); add('exportPngSel:2', 'Export selection as PNG…');
+      add('copyPng', 'Copy as image', 'Ctrl+Shift+C'); add('exportPngSel:2', 'Export selection as PNG (2×)…');
       sep();
       if (sel.some((i) => i.type === 'connector')) {
         add('addLabel', one?.label ? 'Edit label' : 'Add label', 'L');
         add('saveflow', 'Save as line style…');
-        add('route:curve', 'Route as curve'); add('route:orthogonal', 'Route orthogonally'); add('route:straight', 'Route straight'); add('reverse', 'Reverse direction'); sep();
+        add('route:curve', 'Route as curve'); add('route:orthogonal', 'Route with right angles'); add('route:straight', 'Route as straight line'); add('reverse', 'Reverse direction'); sep();
       }
       add('front', 'Bring to front', 'Ctrl+Shift+]'); add('back', 'Send to back', 'Ctrl+Shift+['); sep();
       if (sel.length > 1) add('group', 'Group', 'Ctrl+G');
@@ -1191,8 +1202,9 @@ class App {
       sep(); add('delete', 'Delete', 'Del');
     } else {
       add('paste', 'Paste', 'Ctrl+V'); add('selectAll', 'Select all', 'Ctrl+A'); sep();
-      add('legend', 'Insert legend of used lines'); add('find', 'Find text…', 'Ctrl+F'); sep();
-      add('zoomFit', 'Fit to window', 'Ctrl+0'); add('grid', 'Show grid', 'G'); add('rulers', 'Show rulers', 'R'); add('unlockall', 'Unlock all'); add('fitpage', 'Fit page to content');
+      add('legend', 'Insert legend of line styles'); add('find', 'Find text…', 'Ctrl+F'); sep();
+      add('zoomFit', 'Zoom to fit', 'Ctrl+0'); tick('grid', 'Show grid', this.editor.showGrid, 'G'); tick('rulers', 'Show rulers', this.editor.showRulers, 'R'); sep();
+      add('unlockall', 'Unlock all'); add('fitpage', 'Fit page to content');
     }
     m.innerHTML = items.join('');
     m.hidden = false;
@@ -1207,13 +1219,13 @@ class App {
       ['Drag icon from the left', 'Add it'], ['Drag from an icon\'s blue dot', 'Draw a connector'], ['C / V / H', 'Connect / select / pan mode'],
       ['Double-click', 'Edit text · add a bend to a line'], ['Ctrl+drag', 'Copy while dragging'], ['Alt+drag a container', 'Move it without its contents'],
       ['Alt+click', 'Select one item inside a group'], ['Shift+drag', 'Move along one axis'], ['Arrows / Shift+arrows', 'Nudge 1 / 10 px'],
-      ['Space+drag, middle mouse', 'Pan'], ['Ctrl+wheel', 'Zoom'], ['Ctrl+0 / Ctrl+1', 'Fit / 100%'], ['Ctrl+G / Ctrl+Shift+G', 'Group / ungroup'],
-      ['Ctrl+] / Ctrl+[', 'Forward / backward (Shift: front / back)'], ['Ctrl+E / Ctrl+Shift+E', 'Export PNG / SVG'], ['Ctrl+Shift+C', 'Copy as image (for Word)'],
+      ['Space+drag, middle mouse', 'Pan'], ['Ctrl+wheel', 'Zoom'], ['Ctrl+0 / Ctrl+1', 'Zoom to fit / to 100%'], ['Ctrl+G / Ctrl+Shift+G', 'Group / ungroup'],
+      ['Ctrl+] / Ctrl+[', 'Forward / backward (Shift: front / back)'], ['Ctrl+E / Ctrl+Shift+E', 'Export as PNG / SVG'], ['Ctrl+Shift+C', 'Copy as image (paste into Word)'],
       ['F5', 'Presentation mode (view-only, for screen sharing); Esc leaves it'], ['F11', 'Full screen'],
-      ['G / R', 'Show grid / rulers'], ['Ctrl+L', 'Lock'], ['L', 'Label on the selected line'], ['Ctrl+F', 'Find text'],
-      ['Ctrl+P / Ctrl+Shift+P', 'PNG for print (300 dpi) / PDF'], ['Ctrl+N', 'New drawing (paper size or template)'],
+      ['G / R', 'Show grid / rulers'], ['Ctrl+L', 'Lock'], ['L', 'Label on selected line'], ['Ctrl+F', 'Find text'],
+      ['Ctrl+P / Ctrl+Shift+P', 'Export as PNG for print (300 dpi) / PDF'], ['Ctrl+N', 'New drawing (paper size or template)'],
     ];
-    this.modal('Keyboard and mouse', `<table class="keys">${rows.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join('')}</table>`);
+    this.modal('Keyboard and mouse shortcuts', `<table class="keys">${rows.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join('')}</table>`);
   }
 
   // Looks on GitHub for a newer release. Automatic check: at most once a day, silent unless there is news.

@@ -33,7 +33,7 @@ The builds are not code-signed, so SmartScreen may ask "Run anyway" the first ti
 | **Presenting** | Presentation mode (`F5`) hides all tools and shows the drawing view-only in the whole window, for screen sharing. `F11` is full screen, `Esc` goes back to editing. |
 | **Comfort** | Dark mode: the drawing is previewed dark, exports stay white. Autosave and crash recovery, templates, find (`Ctrl+F`), and an adjustable interface size. A daily update check points you to new releases (it can be switched off; nothing is installed automatically). |
 
-**Help → Keyboard and mouse** has the full list of shortcuts.
+**Help → Keyboard and mouse shortcuts** has the full list.
 
 ## Visio
 

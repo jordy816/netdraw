@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.1 — 2026-10-08
+
+- Menus tidied up:
+  - on/off settings now show a check mark that follows the real state: Export in dark colours, Show grid, Show rulers,
+    Snap to grid and guides, Full screen, Show drawing dark in dark theme
+  - Theme and Interface size show which choice is active
+  - one wording everywhere (menu bar, Export menu, right-click menu, tooltips): "Export as PNG (2×, screen and
+    Word)…", "Zoom to fit", "Zoom to 100%", "Align centre", "Image or logo…", "Keyboard and mouse shortcuts"; "…" only
+    where a dialog follows
+
 ## 1.3.0 — 2026-10-07
 
 - Export to Visio (`.vsdx`): Export → Visio drawing. The drawing opens in Microsoft Visio as real, editable shapes:

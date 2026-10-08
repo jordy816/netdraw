@@ -201,6 +201,46 @@ const vsdxToast = await win.locator('#toast').textContent();
 check('Visio export writes a .vsdx', vsdxPath === vsdxOut && fs.existsSync(vsdxOut) && fs.readFileSync(vsdxOut).subarray(0, 2).toString() === 'PK', vsdxToast);
 check('Visio export reports shapes and attached lines', /for Visio \(\d+ shapes, \d+ line ends attached\)/.test(vsdxToast), vsdxToast);
 
+// 8f. menu bar: on/off settings carry a check mark that follows the real state; choices are radio groups
+const menuItems = () => app.evaluate(({ Menu }) => {
+  const out = {};
+  const walk = (items, at) => { for (const i of items) { const p = (at ? `${at} > ` : '') + i.label.replace(/&/g, ''); out[p] = { type: i.type, checked: i.checked }; if (i.submenu) walk(i.submenu.items, p); } };
+  walk(Menu.getApplicationMenu().items, '');
+  return out;
+});
+const clickMenu = (trail) => app.evaluate(({ Menu }, t) => {
+  let items = Menu.getApplicationMenu().items, hit = null;
+  for (const name of t) { hit = items.find((i) => i.label.replace(/&/g, '') === name); items = hit.submenu ? hit.submenu.items : []; }
+  hit.click();
+}, trail);
+const settle = () => win.waitForTimeout(250);
+let mi = await menuItems();
+const pageState = () => win.evaluate(() => ({ dark: window.app.darkExport, grid: window.app.editor.showGrid, rulers: window.app.editor.showRulers, snap: window.app.editor.snap, theme: window.app.theme }));
+let ps = await pageState();
+check('menu shows the settings as check boxes', ['File > Export in dark colours', 'View > Show grid', 'View > Show rulers', 'View > Snap to grid and guides', 'View > Full screen', 'View > Show drawing dark in dark theme'].every((k) => mi[k]?.type === 'checkbox'), Object.keys(mi).filter((k) => mi[k].type === 'checkbox').join(' | '));
+check('check marks match the editor at start', mi['File > Export in dark colours'].checked === ps.dark && mi['View > Show grid'].checked === ps.grid && mi['View > Show rulers'].checked === ps.rulers && mi['View > Snap to grid and guides'].checked === ps.snap, JSON.stringify(ps));
+await win.evaluate(() => { window.app.command('darkExport'); }); await settle();
+mi = await menuItems();
+check('switching dark export in the app ticks the menu item', mi['File > Export in dark colours'].checked === !ps.dark);
+await clickMenu(['File', 'Export in dark colours']); await settle();
+mi = await menuItems();
+check('clicking the menu item switches it back', mi['File > Export in dark colours'].checked === ps.dark && (await pageState()).dark === ps.dark);
+await clickMenu(['View', 'Show grid']); await settle();
+mi = await menuItems();
+check('clicking Show grid toggles the grid and its mark', (await pageState()).grid === !ps.grid && mi['View > Show grid'].checked === !ps.grid);
+await clickMenu(['View', 'Show grid']); await settle();
+await clickMenu(['View', 'Theme', 'Dark']); await settle();
+mi = await menuItems();
+check('theme is a radio group', mi['View > Theme > Dark'].type === 'radio' && mi['View > Theme > Dark'].checked && !mi['View > Theme > Light'].checked && !mi['View > Theme > System'].checked && (await pageState()).theme === 'dark');
+await win.evaluate((t) => { window.app.command(`theme:${t}`); }, ps.theme); await settle();
+await clickMenu(['View', 'Interface size', '115%']); await settle();
+mi = await menuItems();
+check('interface size is a radio group', mi['View > Interface size > 115%'].checked && !mi['View > Interface size > 100%'].checked);
+await clickMenu(['View', 'Interface size', '100%']); await settle();
+const labels = Object.keys(mi);
+check('menu wording is consistent', !labels.some((l) => /on \/ off|\/ unlock| \/ /.test(l)) && labels.filter((l) => /^File > Export as /.test(l)).length === 6 && labels.filter((l) => /^File > Export as .*…$/.test(l)).length === 6,
+  labels.filter((l) => /^File > Export/.test(l)).join(' | '));
+
 // 9. autosave + recovery after a crash-like exit
 await win.evaluate(() => { window.app.markDirty(); window.app.autosave(); });
 await win.waitForTimeout(300);

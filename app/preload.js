@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('netdrawHost', {
   fontBase64: (n) => ipcRenderer.invoke('fontBase64', n),
   pathForFile: (f) => { try { return webUtils.getPathForFile(f) || null; } catch { return null; } },
   version: ipcRenderer.sendSync('version'),
+  setMenuState: (st) => ipcRenderer.send('menuState', st),
   setTheme: (t) => ipcRenderer.send('setTheme', t),
   setUiZoom: (f) => ipcRenderer.send('setUiZoom', f),
   setPresenting: (on) => ipcRenderer.send('setPresenting', on),

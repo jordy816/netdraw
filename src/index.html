@@ -35,29 +35,29 @@
   <button class="tb" data-cmd="snap" title="Snap to grid and guides"><svg viewBox="0 0 24 24"><path d="M6 4v8a6 6 0 0 0 12 0V4h-4v8a2 2 0 0 1-4 0V4z M6 8h4 M14 8h4"/></svg></button>
   <div class="spacer"></div>
   <button class="tb" data-cmd="zoomOut" title="Zoom out (Ctrl+-)"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
-  <button id="zoomlabel" class="zoomlabel" title="Click for 100% (Ctrl+1)">100%</button>
+  <button id="zoomlabel" class="zoomlabel" title="Zoom to 100% (Ctrl+1)">100%</button>
   <button class="tb" data-cmd="zoomIn" title="Zoom in (Ctrl+=)"><svg viewBox="0 0 24 24"><path d="M6 12h12 M12 6v12"/></svg></button>
-  <button class="tb" data-cmd="zoomFit" title="Fit (Ctrl+0)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5"/></svg></button>
+  <button class="tb" data-cmd="zoomFit" title="Zoom to fit (Ctrl+0)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5"/></svg></button>
   <div class="sep"></div>
   <button class="tb" data-cmd="present" title="Presentation mode: hide the tools for screen sharing (F5)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4 M8 20h8 M10 8l4 2-4 2z"/></svg></button>
-  <button class="tb" data-cmd="theme" title="Dark mode (exports stay white unless you switch on Export in dark)"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
+  <button class="tb" data-cmd="theme" title="Dark theme (exports stay white unless Export in dark colours is on)"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
   <div class="sep"></div>
   <button class="tb wide" data-cmd="export" data-menu="m-export" title="Export"><svg viewBox="0 0 24 24"><path d="M12 3v12 M7 10l5 5 5-5 M5 21h14"/></svg><span>Export</span></button>
   <div id="updatepill" class="updatepill" hidden><button data-cmd="openUpdate" title="Open the download page on GitHub"><span>Update available</span></button><button data-cmd="dismissUpdate" class="x" title="Hide until the next version">×</button></div>
-  <button class="tb" data-cmd="shortcuts" title="Keyboard and mouse"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6 M12 17.2v.1"/></svg></button>
+  <button class="tb" data-cmd="shortcuts" title="Keyboard and mouse shortcuts"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6 M12 17.2v.1"/></svg></button>
 </header>
 <div id="m-export" class="menu" hidden>
-  <button data-cmd="exportPng:2"><span>PNG for screen / Word (2×) <small data-dim="2"></small></span><kbd>Ctrl+E</kbd></button>
-  <button data-cmd="exportPng:print"><span>PNG for print (300 dpi) <small data-dim="print"></small></span><kbd>Ctrl+P</kbd></button>
-  <button data-cmd="exportPng:1"><span>PNG, 1× <small data-dim="1"></small></span></button>
-  <button data-cmd="exportPdf"><span>PDF, vector <small data-dim="pdf"></small></span><kbd>Ctrl+Shift+P</kbd></button>
+  <button data-cmd="exportPng:2"><span>PNG (2×, screen and Word) <small data-dim="2"></small></span><kbd>Ctrl+E</kbd></button>
+  <button data-cmd="exportPng:print"><span>PNG (300 dpi, print) <small data-dim="print"></small></span><kbd>Ctrl+P</kbd></button>
+  <button data-cmd="exportPng:1"><span>PNG (1×) <small data-dim="1"></small></span></button>
+  <button data-cmd="exportPdf"><span>PDF (vector, paper size) <small data-dim="pdf"></small></span><kbd>Ctrl+Shift+P</kbd></button>
   <button data-cmd="exportSvg">SVG (fonts embedded)<kbd>Ctrl+Shift+E</kbd></button>
-  <button data-cmd="exportVsdx"><span>Visio drawing <small>.vsdx, editable shapes</small></span></button>
+  <button data-cmd="exportVsdx">Visio drawing (.vsdx)</button>
   <hr>
-  <button data-cmd="exportPngSel:2">Selection as PNG, 2×</button>
+  <button data-cmd="exportPngSel:2">Selection as PNG (2×)</button>
   <button data-cmd="exportSvg:sel">Selection as SVG</button>
   <hr>
-  <button data-cmd="copyPng">Copy as image (paste into Word)<kbd>Ctrl+Shift+C</kbd></button>
+  <button data-cmd="copyPng">Copy as image<kbd>Ctrl+Shift+C</kbd></button>
   <hr>
   <button data-cmd="darkExport" class="checkable"><span>Export in dark colours</span><kbd class="tick">✓</kbd></button>
 </div>
@@ -72,10 +72,10 @@
 <footer id="status"><span id="hint"></span><span class="spacer"></span><span id="coords"></span></footer>
 <div id="presentbar">
   <button class="tb" data-cmd="zoomOut" title="Zoom out (-)"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
-  <button class="tb" data-cmd="zoomFit" title="Fit (0)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5"/></svg></button>
+  <button class="tb" data-cmd="zoomFit" title="Zoom to fit (0)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5"/></svg></button>
   <button class="tb" data-cmd="zoomIn" title="Zoom in (+)"><svg viewBox="0 0 24 24"><path d="M6 12h12 M12 6v12"/></svg></button>
   <div class="sep"></div>
-  <button class="tb" data-cmd="theme" title="Dark / light (D)"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
+  <button class="tb" data-cmd="theme" title="Dark or light theme (D)"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
   <button class="tb" data-cmd="fullscreen" title="Full screen (F11)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5 M9 9h6v6H9z"/></svg></button>
   <div class="sep"></div>
   <button class="tb wide" data-cmd="present" title="Back to editing (Esc)"><svg viewBox="0 0 24 24"><path d="M6 6l12 12 M18 6L6 18"/></svg><span>Exit</span></button>

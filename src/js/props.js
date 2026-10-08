@@ -224,10 +224,10 @@ export class Props {
     const ic = (d) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="${d}"/></svg>`;
     return '<details open><summary>Align &amp; distribute</summary><div class="fields"><div class="btns">' +
       b('align:left', 'Align left', ic('M4 3v18M8 7h10M8 13h6M8 17h8')) +
-      b('align:hcenter', 'Align centres horizontally', ic('M12 3v18M6 7h12M8 12h8M5 17h14')) +
+      b('align:hcenter', 'Align centre', ic('M12 3v18M6 7h12M8 12h8M5 17h14')) +
       b('align:right', 'Align right', ic('M20 3v18M6 7h10M10 13h6M8 17h8')) +
       b('align:top', 'Align top', ic('M3 4h18M7 8v10M13 8v6M17 8v8')) +
-      b('align:vcenter', 'Align middles vertically', ic('M3 12h18M7 6v12M12 8v8M17 5v14')) +
+      b('align:vcenter', 'Align middle', ic('M3 12h18M7 6v12M12 8v8M17 5v14')) +
       b('align:bottom', 'Align bottom', ic('M3 20h18M7 6v10M13 10v6M17 8v8')) +
       b('dist:h', 'Distribute horizontally', ic('M4 4v16M20 4v16M10 8h4v8h-4z')) +
       b('dist:v', 'Distribute vertically', ic('M4 4h16M4 20h16M8 10v4h8v-4z')) +

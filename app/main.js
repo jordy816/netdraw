@@ -329,80 +329,95 @@ function addRecent(p) {
 // ------------------------------------------------------------------------------------------------ window & menu
 const send = (cmd) => win?.webContents.send('cmd', cmd);
 
+// The on/off settings live in the editor page; it reports them here so the menu can show them with a check mark.
+let menuState = { darkExport: false, grid: false, rulers: true, snap: true, darkPreview: true, theme: 'system', uiZoom: 1 };
+
+// Wording: sentence case, verb first, the detail in brackets, and "…" only where a dialog asks something first.
+// A setting that is on or off is a check box, a choice between several is a radio group.
 function buildMenu() {
   const item = (label, cmd, accelerator) => ({ label, accelerator, registerAccelerator: false, click: () => send(cmd) });
+  // Electron flips the mark itself on click; put back what is true until the editor reports the new state
+  const check = (label, cmd, on, accelerator) => ({
+    label, type: 'checkbox', checked: !!on, accelerator, registerAccelerator: false, click: (mi) => { mi.checked = !!on; send(cmd); },
+  });
+  const radio = (label, cmd, on) => ({ label, type: 'radio', checked: !!on, click: () => send(cmd) });
+  const sep = { type: 'separator' };
+  const st = menuState;
   const rec = recent();
   const template = [
     {
       label: '&File',
       submenu: [
         item('&New…', 'new', 'Ctrl+N'), item('&Open…', 'open', 'Ctrl+O'),
-        { label: 'Open &recent', submenu: rec.length ? rec.map((p) => ({ label: p, click: () => win?.webContents.send('cmd', 'openPath', p) })) : [{ label: '(empty)', enabled: false }] },
-        { type: 'separator' },
+        { label: 'Open &recent', submenu: rec.length ? rec.map((p) => ({ label: p, click: () => win?.webContents.send('cmd', 'openPath', p) })) : [{ label: '(none yet)', enabled: false }] },
+        sep,
         item('&Save', 'save', 'Ctrl+S'), item('Save &as…', 'saveAs', 'Ctrl+Shift+S'),
-        { type: 'separator' },
-        item('Export PNG for screen / Word (2×)…', 'exportPng:2', 'Ctrl+E'), item('Export PNG for print (300 dpi)…', 'exportPng:print', 'Ctrl+P'),
-        item('Export PNG (1×)…', 'exportPng:1'), item('Export PDF (vector, paper size)…', 'exportPdf', 'Ctrl+Shift+P'),
-        item('Export SVG…', 'exportSvg', 'Ctrl+Shift+E'), item('Export Visio drawing (.vsdx)…', 'exportVsdx'), item('Export selection as PNG…', 'exportPngSel:2'),
-        item('Copy as image', 'copyPng', 'Ctrl+Shift+C'), item('Export in dark colours (on / off)', 'darkExport'),
-        { type: 'separator' },
+        sep,
+        item('Export as PNG (2×, screen and Word)…', 'exportPng:2', 'Ctrl+E'), item('Export as PNG (300 dpi, print)…', 'exportPng:print', 'Ctrl+P'),
+        item('Export as PNG (1×)…', 'exportPng:1'), item('Export as PDF (vector, paper size)…', 'exportPdf', 'Ctrl+Shift+P'),
+        item('Export as SVG (fonts embedded)…', 'exportSvg', 'Ctrl+Shift+E'), item('Export as Visio drawing (.vsdx)…', 'exportVsdx'),
+        item('Export selection as PNG (2×)…', 'exportPngSel:2'),
+        sep,
+        item('Copy as image', 'copyPng', 'Ctrl+Shift+C'), check('Export in dark colours', 'darkExport', st.darkExport),
+        sep,
         { label: 'E&xit', role: 'quit' },
       ],
     },
     {
       label: '&Edit',
       submenu: [
-        item('&Undo', 'undo', 'Ctrl+Z'), item('&Redo', 'redo', 'Ctrl+Y'), { type: 'separator' },
+        item('&Undo', 'undo', 'Ctrl+Z'), item('&Redo', 'redo', 'Ctrl+Y'), sep,
         item('Cu&t', 'cut', 'Ctrl+X'), item('&Copy', 'copy', 'Ctrl+C'), item('&Paste', 'paste', 'Ctrl+V'),
-        item('&Duplicate', 'duplicate', 'Ctrl+D'), item('Delete', 'delete', 'Delete'), { type: 'separator' },
-        item('Select &all', 'selectAll', 'Ctrl+A'), item('Edit text', 'edit', 'F2'), item('&Find…', 'find', 'Ctrl+F'),
+        item('&Duplicate', 'duplicate', 'Ctrl+D'), item('De&lete', 'delete', 'Delete'), sep,
+        item('Select &all', 'selectAll', 'Ctrl+A'), item('&Edit text', 'edit', 'F2'), item('&Find text…', 'find', 'Ctrl+F'),
       ],
     },
     {
       label: '&Insert',
       submenu: [
-        item('Legend of used line styles', 'legend'), item('Label on the selected line', 'addLabel', 'L'),
-        item('Save selected line as a style…', 'saveflow'), item('Image / logo…', 'image'),
+        item('&Image or logo…', 'image'), item('&Legend of line styles', 'legend'), item('La&bel on selected line', 'addLabel', 'L'), sep,
+        item('&Save selected line as line style…', 'saveflow'),
       ],
     },
     {
       label: '&Arrange',
       submenu: [
-        item('Bring to front', 'front', 'Ctrl+Shift+]'), item('Bring forward', 'forward', 'Ctrl+]'),
-        item('Send backward', 'backward', 'Ctrl+['), item('Send to back', 'back', 'Ctrl+Shift+['), { type: 'separator' },
-        item('Group', 'group', 'Ctrl+G'), item('Ungroup', 'ungroup', 'Ctrl+Shift+G'), item('Lock / unlock', 'lock', 'Ctrl+L'),
-        item('Unlock all', 'unlockall'), { type: 'separator' },
-        item('Align left', 'align:left'), item('Align centres', 'align:hcenter'), item('Align right', 'align:right'),
-        item('Align top', 'align:top'), item('Align middles', 'align:vcenter'), item('Align bottom', 'align:bottom'),
-        item('Distribute horizontally', 'dist:h'), item('Distribute vertically', 'dist:v'), { type: 'separator' },
-        item('Connect line ends to icons', 'autoattach'), item('Fit page to content', 'fitpage'),
+        item('Bring to &front', 'front', 'Ctrl+Shift+]'), item('Bring forward', 'forward', 'Ctrl+]'),
+        item('Send backward', 'backward', 'Ctrl+['), item('Send to &back', 'back', 'Ctrl+Shift+['), sep,
+        item('&Group', 'group', 'Ctrl+G'), item('&Ungroup', 'ungroup', 'Ctrl+Shift+G'), item('&Lock or unlock', 'lock', 'Ctrl+L'),
+        item('Unlock all', 'unlockall'), sep,
+        item('Align left', 'align:left'), item('Align centre', 'align:hcenter'), item('Align right', 'align:right'),
+        item('Align top', 'align:top'), item('Align middle', 'align:vcenter'), item('Align bottom', 'align:bottom'), sep,
+        item('Distribute horizontally', 'dist:h'), item('Distribute vertically', 'dist:v'), sep,
+        item('Attach line ends to icons', 'autoattach'), item('Fit page to content', 'fitpage'),
       ],
     },
     {
       label: '&View',
       submenu: [
-        item('Zoom in', 'zoomIn', 'Ctrl+='), item('Zoom out', 'zoomOut', 'Ctrl+-'), item('Fit to window', 'zoomFit', 'Ctrl+0'),
-        item('Actual size', 'zoom100', 'Ctrl+1'), { type: 'separator' },
-        item('Presentation mode', 'present', 'F5'), item('Full screen', 'fullscreen', 'F11'), { type: 'separator' }, item('Show grid', 'grid', 'G'), item('Show rulers (mm)', 'rulers', 'R'),
-        item('Snap', 'snap'), { type: 'separator' },
-        { label: 'Theme', submenu: [item('System', 'theme:system'), item('Light', 'theme:light'), item('Dark', 'theme:dark')] },
-        item('Dark drawing preview (exports stay white)', 'darkPreview'),
-        { label: 'Interface size', submenu: [item('100%', 'uiZoom:1'), item('115%', 'uiZoom:1.15'), item('130%', 'uiZoom:1.3'), item('150%', 'uiZoom:1.5')] },
-        { type: 'separator' }, { label: 'Developer tools', accelerator: 'Ctrl+Shift+I', click: () => win?.webContents.toggleDevTools() },
+        item('Zoom &in', 'zoomIn', 'Ctrl+='), item('Zoom &out', 'zoomOut', 'Ctrl+-'), item('Zoom to &fit', 'zoomFit', 'Ctrl+0'),
+        item('Zoom to &100%', 'zoom100', 'Ctrl+1'), sep,
+        item('&Presentation mode', 'present', 'F5'), check('F&ull screen', 'fullscreen', win?.isFullScreen(), 'F11'), sep,
+        check('Show &grid', 'grid', st.grid, 'G'), check('Show &rulers', 'rulers', st.rulers, 'R'), check('&Snap to grid and guides', 'snap', st.snap), sep,
+        { label: '&Theme', submenu: [radio('System', 'theme:system', st.theme === 'system'), radio('Light', 'theme:light', st.theme === 'light'), radio('Dark', 'theme:dark', st.theme === 'dark')] },
+        check('Show drawing &dark in dark theme', 'darkPreview', st.darkPreview),
+        { label: 'Interface si&ze', submenu: [1, 1.15, 1.3, 1.5].map((z) => radio(`${Math.round(z * 100)}%`, `uiZoom:${z}`, Math.abs(st.uiZoom - z) < 0.01)) },
+        sep, { label: 'Developer tools', accelerator: 'Ctrl+Shift+I', click: () => win?.webContents.toggleDevTools() },
       ],
     },
     {
       label: '&Help',
       submenu: [
-        item('Keyboard and mouse', 'shortcuts'),
-        item('Connect Claude / AI assistant (MCP)…', 'mcp'),
-        item('Check for updates…', 'checkUpdate'),
+        item('&Keyboard and mouse shortcuts', 'shortcuts'),
+        item('&Connect an AI assistant (MCP)…', 'mcp'),
+        item('Check for &updates…', 'checkUpdate'),
         {
-          label: 'Set up on this PC (Start menu, open .netdraw files)', click: () => {
+          label: '&Set up on this PC (Start menu, .netdraw files)', click: () => {
             try { dialog.showMessageBox(win, { type: 'info', title: 'NetDraw', message: registerFileType() }); } catch (e) { dialog.showErrorBox('NetDraw', String(e.message || e)); }
           },
         },
-        item('About NetDraw', 'about'),
+        sep,
+        item('&About NetDraw', 'about'),
       ],
     },
   ];
@@ -417,6 +432,8 @@ function createWindow(startFile) {
   });
   win.startFile = startFile;
   buildMenu();
+  win.on('enter-full-screen', buildMenu);
+  win.on('leave-full-screen', buildMenu);
   win.loadFile(path.join(SRC, 'index.html'));
   win.once('ready-to-show', () => { win.maximize(); win.show(); });
   if (smokeOut) {
@@ -447,6 +464,13 @@ function createWindow(startFile) {
 // ------------------------------------------------------------------------------------------------ ipc
 function wireIpc() {
   ipcMain.handle('startupFile', () => win?.startFile || null);
+  ipcMain.on('menuState', (_e, st) => {
+    const next = { ...menuState };
+    for (const k of Object.keys(menuState)) if (st && typeof st[k] === typeof menuState[k]) next[k] = st[k];
+    if (JSON.stringify(next) === JSON.stringify(menuState)) return;
+    menuState = next;
+    buildMenu();
+  });
   ipcMain.on('setTitle', (_e, t) => win?.setTitle(t));
   ipcMain.on('setDirty', (_e, d) => { dirty = !!d; });
   ipcMain.on('closeNow', () => { forceClose = true; win?.close(); });
